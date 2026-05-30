@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background:
+    linear-gradient(135deg, rgba(85, 224, 196, 0.09), transparent 34rem),
+    linear-gradient(225deg, rgba(255, 122, 89, 0.08), transparent 30rem),
+    #080a0f;
+  color: #f8fafc;
+}
+
+::selection {
+  background: rgba(85, 224, 196, 0.35);
+}
+
+.field {
+  @apply w-full rounded-lg border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-brand/70 focus:ring-2 focus:ring-brand/20;
+}
+
+.label {
+  @apply text-sm font-medium text-slate-300;
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+.btn-primary {
+  @apply btn bg-brand text-slate-950 hover:bg-brand/90;
+}
+
+.btn-ghost {
+  @apply btn border border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/[0.08];
+}
+
+.panel {
+  @apply border border-white/10 bg-white/[0.045] shadow-glow backdrop-blur;
+}
