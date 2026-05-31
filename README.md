@@ -60,3 +60,7 @@ where lower(email) = lower('you@example.com');
 - The `prompt-images` storage bucket is created by the SQL file and is public for reads.
 - `SUPABASE_SERVICE_ROLE_KEY` is used only by server actions in the admin dashboard. Never expose it in the browser.
 - Public visitors can view public, non-hidden prompts. Authenticated users can create prompts and manage their own prompts/favorites/reports. Admins can manage all records.
+
+## PR3 in progress
+
+This branch is used to complete missing live PromptVault feature parity and production QA fixes.
