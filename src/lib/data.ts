@@ -36,6 +36,7 @@ export async function getCategories(): Promise<Category[]> {
 export async function getPrompts(options?: {
   search?: string;
   category?: string;
+  aspectRatio?: string;
   featured?: boolean;
   limit?: number;
   order?: "latest" | "trending";
@@ -44,6 +45,7 @@ export async function getPrompts(options?: {
     const search = options?.search ? sanitizeSearch(options.search).toLowerCase() : "";
     const filtered = demoPrompts
       .filter((prompt) => !options?.category || prompt.categories?.slug === options.category)
+      .filter((prompt) => !options?.aspectRatio || prompt.aspect_ratio === options.aspectRatio)
       .filter((prompt) => !options?.featured || prompt.featured)
       .filter((prompt) => {
         if (!search) return true;
@@ -91,6 +93,7 @@ export async function getPrompts(options?: {
     .eq("hidden", false);
 
   if (options?.category) query = categoryId ? query.eq("category_id", categoryId) : query.eq("category_id", "00000000-0000-0000-0000-000000000000");
+  if (options?.aspectRatio) query = query.eq("aspect_ratio", options.aspectRatio);
   if (options?.featured) query = query.eq("featured", true);
   if (search) {
     const tag = search.toLowerCase().replace(/[{}"',]/g, "");

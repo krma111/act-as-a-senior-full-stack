@@ -8,15 +8,15 @@ import { styleExamples } from "@/lib/style-examples";
 export default async function Home({
   searchParams
 }: {
-  searchParams: Promise<{ q?: string; category?: string }>;
+  searchParams: Promise<{ q?: string; category?: string; ratio?: string }>;
 }) {
   const params = await searchParams;
   const [settings, categories, featured, trending, latest] = await Promise.all([
     getSiteSettings(),
     getCategories(),
-    getPrompts({ search: params.q, category: params.category, featured: true, order: "latest", limit: 4 }),
-    getPrompts({ search: params.q, category: params.category, order: "trending", limit: 8 }),
-    getPrompts({ search: params.q, category: params.category, order: "latest", limit: 12 })
+    getPrompts({ search: params.q, category: params.category, aspectRatio: params.ratio, featured: true, order: "latest", limit: 4 }),
+    getPrompts({ search: params.q, category: params.category, aspectRatio: params.ratio, order: "trending", limit: 8 }),
+    getPrompts({ search: params.q, category: params.category, aspectRatio: params.ratio, order: "latest", limit: 12 })
   ]);
 
   return (
@@ -32,7 +32,7 @@ export default async function Home({
           <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-300">
             {settings.hero_subheadline}
           </p>
-          <SearchFilters categories={categories} activeCategory={params.category} search={params.q} />
+          <SearchFilters categories={categories} activeCategory={params.category} activeAspectRatio={params.ratio} search={params.q} />
         </div>
       </section>
 
