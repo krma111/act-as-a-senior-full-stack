@@ -53,7 +53,7 @@ export async function signUp(formData: FormData) {
     email,
     password,
     options: {
-      emailRedirectTo: `${siteUrl}/profile`,
+      emailRedirectTo: `${siteUrl}/auth/callback?next=/profile`,
       data: { display_name: displayName, role }
     }
   });
