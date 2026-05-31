@@ -14,6 +14,8 @@ export type Profile = {
   created_at: string;
 };
 
+export type PromptStatus = "pending" | "approved" | "rejected";
+
 export type Prompt = {
   id: string;
   user_id: string;
@@ -29,7 +31,12 @@ export type Prompt = {
   like_count: number;
   featured: boolean;
   hidden: boolean;
+  status?: PromptStatus;
+  rejection_reason?: string | null;
+  approved_at?: string | null;
+  approved_by?: string | null;
   created_at: string;
+  updated_at?: string;
   categories?: Category | null;
   users?: Profile | null;
 };
