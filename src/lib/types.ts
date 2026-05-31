@@ -26,6 +26,7 @@ export type Prompt = {
   image_url: string;
   ai_model: string;
   visibility: "public" | "private";
+  aspect_ratio?: string | null;
   tags: string[];
   copy_count: number;
   like_count: number;
