@@ -1,12 +1,12 @@
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { getSupabaseAnonKey, getSupabaseUrl, siteUrl } from "@/lib/env";
 
 type CookieToSet = {
   name: string;
   value: string;
-  options?: Parameters<ReturnType<typeof cookies>["set"]>[2];
+  options: CookieOptions;
 };
 
 export async function GET(request: Request) {
