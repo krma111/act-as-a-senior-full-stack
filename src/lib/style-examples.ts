@@ -77,7 +77,7 @@ export const styleExamples: StyleExample[] = styles.map(([title, category, accen
     title,
     category,
     accent,
-    imageUrl: `https://picsum.photos/seed/prompthub-${id}/900/1100`,
+    imageUrl: `https://picsum.photos/seed/promptvault-${id}/900/1100`,
     prompt: `Use the uploaded reference photo as the subject identity and recreate it in a ${title.toLowerCase()} style: ${accent}. Preserve the person's facial structure, pose, clothing silhouette, and recognizable details while transforming lighting, color grade, background, texture, and camera treatment. High-resolution, premium composition, natural anatomy, detailed face, polished professional finish.`
   };
 });
