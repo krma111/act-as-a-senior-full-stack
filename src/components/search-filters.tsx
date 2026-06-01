@@ -49,10 +49,10 @@ export function SearchFilters({
 
   return (
     <form className="mx-auto mt-8 max-w-3xl" onSubmit={onSubmit}>
-      <div className="relative">
+      <div className="search-shell relative overflow-hidden rounded-2xl border border-brand/20 bg-white/[0.03] p-1 shadow-glow">
         <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
         <input
-          className="field h-14 pl-12 text-base"
+          className="field h-14 border-transparent bg-black/30 pl-12 text-base"
           name="q"
           value={value}
           onChange={(e) => onChange(e.target.value)}
