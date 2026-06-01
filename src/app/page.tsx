@@ -25,6 +25,9 @@ export default async function Home({
   return (
     <main>
       <section className="relative overflow-hidden px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
+        <div className="hero-grid" />
+        <div className="hero-orb hero-orb-left" />
+        <div className="hero-orb hero-orb-right" />
         <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 mx-auto h-72 max-w-5xl rounded-full bg-brand/10 blur-3xl" />
         <div className="mx-auto max-w-6xl text-center">
           <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-4 py-2 text-sm font-semibold text-brand shadow-glow">
@@ -63,9 +66,23 @@ export default async function Home({
 
           <SearchFilters categories={categories} activeCategory={params.category} activeAspectRatio={params.ratio} search={params.q} />
         </div>
+        <div className="pointer-events-none absolute inset-y-0 left-8 hidden xl:flex xl:items-center">
+          <div className="floating-badge max-w-[14rem]">
+            <p className="text-[11px] uppercase tracking-[0.24em] text-brand">Signal</p>
+            <p className="mt-2 text-lg font-bold text-white">Motion-rich prompt discovery</p>
+            <p className="mt-1 text-sm text-slate-400">Animated glow, sharper contrast, actual green.</p>
+          </div>
+        </div>
+        <div className="pointer-events-none absolute inset-y-0 right-8 hidden xl:flex xl:items-center">
+          <div className="floating-badge floating-badge-delay max-w-[14rem]">
+            <p className="text-[11px] uppercase tracking-[0.24em] text-brand">Format</p>
+            <p className="mt-2 text-lg font-bold text-white">9:16, 1:1, 16:9</p>
+            <p className="mt-1 text-sm text-slate-400">Built for social, portraits, and campaign assets.</p>
+          </div>
+        </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
+      <section className="section-shell mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
         <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
             <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-brand">
@@ -80,7 +97,7 @@ export default async function Home({
 
       <StyleRemixGrid examples={styleExamples} />
 
-      <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
+      <section className="section-shell mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
         <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
             <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-brand">
@@ -93,7 +110,7 @@ export default async function Home({
         <PromptGrid prompts={trending} empty="No trending prompts match this search yet." />
       </section>
 
-      <section id="latest" className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
+      <section id="latest" className="section-shell mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
         <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
             <p className="text-sm font-semibold uppercase tracking-wide text-brand">Fresh uploads</p>
