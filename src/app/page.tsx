@@ -103,10 +103,6 @@ export default async function Home({
         </div>
         <PromptGrid prompts={latest} empty="No prompts yet. Be the first creator to publish one." />
       </section>
-
-      <footer className="border-t border-white/10 bg-black/20 px-4 py-10 text-center text-sm text-slate-400">
-        <p>© 2026 PromptVault. All rights reserved.</p>
-      </footer>
     </main>
   );
 }
