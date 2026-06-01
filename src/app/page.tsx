@@ -105,7 +105,7 @@ export default async function Home({
       </section>
 
       <footer className="border-t border-white/10 bg-black/20 px-4 py-10 text-center text-sm text-slate-400">
-        <p>PromptVault. All rights reserved.</p>
+        <p>© 2026 PromptVault. All rights reserved.</p>
       </footer>
     </main>
   );
