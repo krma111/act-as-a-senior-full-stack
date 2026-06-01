@@ -8,7 +8,7 @@ export type PreviewUser = {
   role: "user" | "admin";
 };
 
-const cookieName = "prompthub_preview_user";
+const cookieName = "promptvault_preview_user";
 
 export async function getPreviewUser() {
   if (!isPreviewMode) return null;
