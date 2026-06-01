@@ -8,11 +8,12 @@ const config: Config = {
         ink: "#080A0F",
         panel: "#10141D",
         line: "rgba(255,255,255,0.1)",
-        brand: "#55E0C4",
-        flame: "#FF7A59"
+        brand: "#22C55E",
+        brandBright: "#4ADE80",
+        brandDeep: "#15803D"
       },
       boxShadow: {
-        glow: "0 20px 80px rgba(85, 224, 196, 0.12)"
+        glow: "0 24px 90px rgba(34, 197, 94, 0.18)"
       }
     }
   },
