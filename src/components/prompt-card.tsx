@@ -20,7 +20,7 @@ export function PromptCard({ prompt }: { prompt: Prompt }) {
           className="object-cover transition duration-700 group-hover:scale-110"
           sizes="(min-width:1280px) 25vw, (min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw"
         />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,197,94,0.18),transparent_52%)] opacity-70 transition duration-500 group-hover:opacity-100" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(57,255,20,0.22),transparent_52%)] opacity-70 transition duration-500 group-hover:opacity-100" />
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950/90 to-transparent" />
         <div className="absolute left-3 top-3 flex flex-wrap gap-2">
           {prompt.featured && (
