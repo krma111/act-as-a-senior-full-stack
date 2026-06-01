@@ -77,12 +77,12 @@ export default async function AdminDashboard({
           { data: previewReports }
         ]
       : await Promise.all([
-      admin!.from("site_settings").select("*").eq("id", 1).single(),
-      admin!.from("categories").select("*").order("name"),
-      admin!.from("users").select("*").order("created_at", { ascending: false }),
-      admin!.from("prompts").select("*, categories(*), users(*)").order("created_at", { ascending: false }),
-      admin!.from("reports").select("*, prompts(id,title,hidden), users(email)").order("created_at", { ascending: false })
-    ]);
+          admin!.from("site_settings").select("*").eq("id", 1).single(),
+          admin!.from("categories").select("*").order("name"),
+          admin!.from("users").select("*").order("created_at", { ascending: false }),
+          admin!.from("prompts").select("*, categories(*), users(*)").order("created_at", { ascending: false }),
+          admin!.from("reports").select("*, prompts(id,title,hidden), users(email)").order("created_at", { ascending: false })
+        ]);
 
   const siteSettings = settings as SiteSettings | null;
   const settingFields: Array<[keyof Pick<SiteSettings, "website_name" | "logo_text" | "hero_headline" | "hero_subheadline" | "footer_text">, string]> = [
@@ -97,7 +97,7 @@ export default async function AdminDashboard({
     <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="mb-8">
         <p className="text-sm uppercase tracking-wide text-brand">Admin</p>
-        <h1 className="text-3xl font-black">PromptHub control panel</h1>
+        <h1 className="text-3xl font-black">PromptVault control panel</h1>
         {params.message && <p className="mt-4 rounded-lg border border-brand/30 bg-brand/10 p-3 text-sm text-brand">{params.message}</p>}
       </div>
 
