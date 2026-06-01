@@ -2,11 +2,11 @@ import type { Category, Prompt, SiteSettings } from "@/lib/types";
 
 export const demoSettings: SiteSettings = {
   id: 1,
-  website_name: "PromptHub",
-  logo_text: "PromptHub",
+  website_name: "PromptVault",
+  logo_text: "PromptVault",
   hero_headline: "Discover and share powerful AI image prompts",
   hero_subheadline: "Browse battle-tested prompts, save favorites, and publish your best image generations.",
-  footer_text: "PromptHub is a free community library for AI image prompt creators.",
+  footer_text: "Copyright 2026 PromptVault. All rights reserved.",
   admin_email: "you@example.com"
 };
 
