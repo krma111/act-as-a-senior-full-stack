@@ -26,6 +26,7 @@ export default async function Home({
     <main>
       <section className="relative overflow-hidden px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
         <div className="hero-grid" />
+        <div className="hero-scan" />
         <div className="hero-orb hero-orb-left" />
         <div className="hero-orb hero-orb-right" />
         <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 mx-auto h-72 max-w-5xl rounded-full bg-brand/10 blur-3xl" />
@@ -49,7 +50,7 @@ export default async function Home({
             </a>
           </div>
 
-          <div className="mx-auto mt-10 grid max-w-4xl gap-3 sm:grid-cols-3">
+          <div className="grid-cascade mx-auto mt-10 grid max-w-4xl gap-3 sm:grid-cols-3">
             <div className="panel rounded-2xl p-4 text-left">
               <p className="text-2xl font-black text-white">{totalVisiblePrompts}+</p>
               <p className="mt-1 text-sm text-slate-400">live prompt cards loaded</p>
