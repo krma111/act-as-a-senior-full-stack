@@ -10,16 +10,17 @@ export function PromptCard({ prompt }: { prompt: Prompt }) {
   return (
     <Link
       href={`/prompts/${prompt.id}`}
-      className="group card-surface overflow-hidden rounded-2xl transition duration-300 hover:-translate-y-1 hover:border-brand/50 hover:shadow-glow"
+      className="group card-surface overflow-hidden rounded-2xl transition duration-500 hover:-translate-y-2 hover:border-brand/50 hover:shadow-glow"
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-slate-950">
         <Image
           src={prompt.image_url}
           alt={prompt.title}
           fill
-          className="object-cover transition duration-700 group-hover:scale-105"
+          className="object-cover transition duration-700 group-hover:scale-110"
           sizes="(min-width:1280px) 25vw, (min-width:1024px) 33vw, (min-width:640px) 50vw, 100vw"
         />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,197,94,0.18),transparent_52%)] opacity-70 transition duration-500 group-hover:opacity-100" />
         <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950/90 to-transparent" />
         <div className="absolute left-3 top-3 flex flex-wrap gap-2">
           {prompt.featured && (
@@ -38,7 +39,7 @@ export function PromptCard({ prompt }: { prompt: Prompt }) {
       </div>
       <div className="space-y-4 p-4">
         <div>
-          <h3 className="line-clamp-2 text-lg font-bold leading-snug text-white transition group-hover:text-brand">{prompt.title}</h3>
+          <h3 className="line-clamp-2 text-lg font-bold leading-snug text-white transition duration-300 group-hover:text-brand">{prompt.title}</h3>
           <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-400">{prompt.prompt_text}</p>
         </div>
 
