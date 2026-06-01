@@ -12,7 +12,7 @@ export default async function Signup({
       <form action={signUp} className="panel w-full space-y-5 rounded-lg p-6">
         <div>
           <h1 className="text-2xl font-bold">Create your account</h1>
-          <p className="mt-2 text-sm text-slate-400">Join PromptHub and publish your image prompt recipes.</p>
+          <p className="mt-2 text-sm text-slate-400">Join PromptVault and publish your image prompt recipes.</p>
         </div>
         {params.message && <p className="rounded-lg bg-red-500/10 p-3 text-sm text-red-200">{params.message}</p>}
         <label className="block space-y-2">
