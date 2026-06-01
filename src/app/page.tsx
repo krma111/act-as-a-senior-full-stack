@@ -28,7 +28,7 @@ export default async function Home({
         <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 mx-auto h-72 max-w-5xl rounded-full bg-brand/10 blur-3xl" />
         <div className="mx-auto max-w-6xl text-center">
           <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-4 py-2 text-sm font-semibold text-brand shadow-glow">
-            <Sparkles className="h-4 w-4" /> Free AI image prompt vault for creators
+            <Sparkles className="h-4 w-4" /> Free image prompt vault for creators
           </div>
           <h1 className="mx-auto max-w-5xl text-4xl font-black tracking-tight text-white sm:text-6xl lg:text-7xl">
             {settings.hero_headline}
