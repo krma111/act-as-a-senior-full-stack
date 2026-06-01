@@ -21,9 +21,10 @@ function StyleCard({ example }: { example: StyleExample }) {
   }, [example.prompt, uploaded]);
 
   return (
-    <article className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.045] transition hover:-translate-y-1 hover:border-brand/50">
+    <article className="card-surface overflow-hidden rounded-2xl transition duration-500 hover:-translate-y-2 hover:border-brand/50">
       <div className="relative aspect-[4/5] overflow-hidden bg-slate-900">
-        <img src={uploaded?.url ?? example.imageUrl} alt={example.title} className="h-full w-full object-cover transition duration-500 hover:scale-105" loading="lazy" />
+        <img src={uploaded?.url ?? example.imageUrl} alt={example.title} className="h-full w-full object-cover transition duration-700 hover:scale-110" loading="lazy" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(57,255,20,0.22),transparent_58%)]" />
         <div className="absolute left-3 top-3 rounded-md bg-slate-950/75 px-2 py-1 text-xs font-semibold text-white backdrop-blur">
           {example.category}
         </div>
@@ -73,7 +74,7 @@ function StyleCard({ example }: { example: StyleExample }) {
 
 export function StyleRemixGrid({ examples }: { examples: StyleExample[] }) {
   return (
-    <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
+    <section className="section-shell mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm uppercase tracking-wide text-brand">{examples.length} recreate-ready styles</p>
@@ -82,7 +83,7 @@ export function StyleRemixGrid({ examples }: { examples: StyleExample[] }) {
           </h2>
         </div>
       </div>
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid-cascade grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {examples.map((example) => (
           <StyleCard key={example.id} example={example} />
         ))}
