@@ -27,6 +27,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_ADMIN_EMAIL=you@example.com
+NEXT_PUBLIC_ENABLE_GOOGLE_OAUTH=false
 NEXT_PUBLIC_ENABLE_GITHUB_OAUTH=false
 ```
 
@@ -64,7 +65,7 @@ npm run dev
   - Add redirect URL: `http://localhost:3000/auth/callback`
   - Add your production redirect URL: `https://promptvault-ai-rho.vercel.app/auth/callback`
 - Auth > Providers
-  - Enable Google in Supabase
+  - Enable Google in Supabase, then set `NEXT_PUBLIC_ENABLE_GOOGLE_OAUTH=true`
   - In Google Cloud, set the authorized redirect URI to `https://<your-supabase-project-ref>.supabase.co/auth/v1/callback`
   - Optional: enable GitHub in Supabase and set `NEXT_PUBLIC_ENABLE_GITHUB_OAUTH=true`
   - In GitHub OAuth App, set the authorization callback URL to `https://<your-supabase-project-ref>.supabase.co/auth/v1/callback`

@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { adminEmail, isPreviewMode, siteUrl } from "@/lib/env";
-import { clearPreviewUser, getPreviewUser, setPreviewUser } from "@/lib/preview-auth";
+import { adminEmail, hasSupabaseEnv, isPreviewMode, siteUrl } from "@/lib/env";
+import { clearPreviewUser } from "@/lib/preview-auth";
+import { isValidEmail, normalizeEmail } from "@/lib/auth/validation";
 
 function asString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -36,16 +37,14 @@ function validatePromptPayload(formData: FormData) {
 }
 
 export async function signUp(formData: FormData) {
-  const email = asString(formData, "email");
+  const email = normalizeEmail(asString(formData, "email"));
   const password = asString(formData, "password");
   const displayName = asString(formData, "display_name");
   const role = email.toLowerCase() === adminEmail.toLowerCase() ? "admin" : "user";
 
-  if (!email || password.length < 8) redirectWithMessage("/signup", "Enter a valid email and an 8+ character password.");
-  if (isPreviewMode) {
-    await setPreviewUser(email, displayName);
-    redirect("/dashboard?message=Preview account created.");
-  }
+  if (!hasSupabaseEnv) redirectWithMessage("/signup", "Supabase is not configured.");
+  if (!isValidEmail(email)) redirectWithMessage("/signup", "Invalid email");
+  if (password.length < 8) redirectWithMessage("/signup", "Password must be at least 8 characters.");
 
   const supabase = await createClient();
 
@@ -63,17 +62,17 @@ export async function signUp(formData: FormData) {
 }
 
 export async function login(formData: FormData) {
-  if (isPreviewMode) {
-    const email = asString(formData, "email");
-    if (!email) redirectWithMessage("/login", "Enter your email.");
-    await setPreviewUser(email);
-    redirect("/dashboard?message=Preview login active.");
-  }
+  const email = normalizeEmail(asString(formData, "email"));
+  const password = asString(formData, "password");
+
+  if (!hasSupabaseEnv) redirectWithMessage("/login", "Supabase is not configured.");
+  if (!isValidEmail(email)) redirectWithMessage("/login", "Invalid email");
+  if (password.length < 8) redirectWithMessage("/login", "Password must be at least 8 characters.");
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({
-    email: asString(formData, "email"),
-    password: asString(formData, "password")
+    email,
+    password
   });
 
   if (error) redirectWithMessage("/login", error.message);
@@ -103,7 +102,7 @@ export async function createPrompt(formData: FormData) {
   if (file.size > 8 * 1024 * 1024) redirectWithMessage("/prompts/new", "Images must be smaller than 8 MB.");
 
   if (isPreviewMode) {
-    redirect(`/dashboard?message=${encodeURIComponent("Preview post saved. Connect Supabase to persist uploads and images.")}`);
+    redirect(`/login?message=${encodeURIComponent("Supabase is not configured.")}`);
   }
 
   const supabase = await createClient();
@@ -186,10 +185,7 @@ export async function updatePrompt(formData: FormData) {
 
 export async function toggleFavorite(promptId: string) {
   if (isPreviewMode) {
-    const user = await getPreviewUser();
-    if (!user) return { error: "Login required" };
-    revalidatePath(`/prompts/${promptId}`);
-    return { favorited: true };
+    return { error: "Supabase is not configured." };
   }
 
   const supabase = await createClient();
@@ -231,10 +227,8 @@ export async function incrementCopyCount(promptId: string) {
 
 export async function reportPrompt(formData: FormData) {
   if (isPreviewMode) {
-    const user = await getPreviewUser();
-    if (!user) redirect("/login");
     const promptId = asString(formData, "prompt_id");
-    redirect(`/prompts/${promptId}?message=${encodeURIComponent("Preview report sent to the admin queue.")}`);
+    redirect(`/prompts/${promptId}?message=${encodeURIComponent("Supabase is not configured.")}`);
   }
 
   const supabase = await createClient();
@@ -255,10 +249,7 @@ export async function reportPrompt(formData: FormData) {
 
 export async function assertAdmin() {
   if (isPreviewMode) {
-    const user = await getPreviewUser();
-    if (!user) redirect("/login");
-    if (user.role !== "admin" || user.email.toLowerCase() !== adminEmail) redirect("/");
-    return user;
+    redirect("/login?message=Supabase%20is%20not%20configured.");
   }
 
   const supabase = await createClient();
@@ -365,10 +356,7 @@ export async function adminHideReportedPrompt(formData: FormData) {
 
 export async function updateProfile(formData: FormData) {
   if (isPreviewMode) {
-    const user = await getPreviewUser();
-    if (!user) redirect("/login");
-    await setPreviewUser(user.email, asString(formData, "display_name"));
-    redirect(`/dashboard?message=${encodeURIComponent("Preview profile updated.")}`);
+    redirectWithMessage("/dashboard", "Supabase is not configured.");
   }
 
   const supabase = await createClient();

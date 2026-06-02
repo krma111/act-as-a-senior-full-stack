@@ -1,9 +1,7 @@
 import { redirect } from "next/navigation";
 import { createPrompt } from "@/lib/actions";
+import { getAuthSessionState } from "@/lib/auth/session";
 import { getCategories } from "@/lib/data";
-import { isPreviewMode } from "@/lib/env";
-import { getPreviewUser } from "@/lib/preview-auth";
-import { createClient } from "@/lib/supabase/server";
 
 const models = ["Midjourney", "DALL-E", "Leonardo", "Stable Diffusion", "Flux", "Ideogram", "Firefly"];
 
@@ -13,11 +11,7 @@ export default async function NewPrompt({
   searchParams: Promise<{ message?: string }>;
 }) {
   const params = await searchParams;
-  const previewUser = await getPreviewUser();
-  const supabase = isPreviewMode ? null : await createClient();
-  const {
-    data: { user }
-  } = supabase ? await supabase.auth.getUser() : { data: { user: previewUser } };
+  const { user } = await getAuthSessionState();
   if (!user) redirect("/login?next=/prompts/new");
   const categories = await getCategories();
 

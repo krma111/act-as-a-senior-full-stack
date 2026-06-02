@@ -6,6 +6,7 @@ import { LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
 import { getAuthErrorMessage } from "@/lib/auth/errors";
 import { getPasswordResetRedirectUrl } from "@/lib/auth/urls";
+import { getEmailValidationError, normalizeEmail } from "@/lib/auth/validation";
 import { createClient } from "@/lib/supabase/client";
 
 export function ForgotPasswordForm({
@@ -19,6 +20,7 @@ export function ForgotPasswordForm({
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialMessage) toast.success(initialMessage);
@@ -28,25 +30,38 @@ export function ForgotPasswordForm({
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!authEnabled) {
-      toast.error("Supabase Auth is not configured yet.");
+      setFormError("Supabase is not configured");
+      toast.error("Supabase is not configured");
+      return;
+    }
+
+    const emailError = getEmailValidationError(email);
+    if (emailError) {
+      setFormError(emailError);
+      toast.error(emailError);
       return;
     }
 
     try {
       setIsLoading(true);
+      setFormError(null);
       const supabase = createClient();
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      const { error } = await supabase.auth.resetPasswordForEmail(normalizeEmail(email), {
         redirectTo: getPasswordResetRedirectUrl()
       });
 
       if (error) {
-        toast.error(getAuthErrorMessage(error));
+        const message = getAuthErrorMessage(error);
+        setFormError(message);
+        toast.error(message);
         return;
       }
 
       toast.success("Password reset email sent.");
     } catch (error) {
-      toast.error(getAuthErrorMessage(error instanceof Error ? error.message : "Unable to send reset email."));
+      const message = getAuthErrorMessage(error instanceof Error ? error.message : "Unable to send reset email.");
+      setFormError(message);
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -65,9 +80,26 @@ export function ForgotPasswordForm({
         </div>
       ) : null}
 
+      {formError ? (
+        <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-100" role="alert">
+          {formError}
+        </div>
+      ) : null}
+
       <label className="block space-y-2">
         <span className="label">Email</span>
-        <input className="field" name="email" type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} required />
+        <input
+          className="field"
+          name="email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          required
+          disabled={!authEnabled || isLoading}
+          inputMode="email"
+        />
       </label>
 
       <button className="btn-primary w-full justify-center" disabled={!authEnabled || isLoading}>
@@ -77,7 +109,9 @@ export function ForgotPasswordForm({
 
       <p className="text-center text-sm text-slate-400">
         Back to{" "}
-        <Link href="/login" className="text-brand transition hover:text-brand/80">login</Link>
+        <Link href="/login" className="text-brand transition hover:text-brand/80">
+          login
+        </Link>
       </p>
     </form>
   );

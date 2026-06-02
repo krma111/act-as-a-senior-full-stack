@@ -9,9 +9,7 @@ import {
   saveSiteSettings,
   upsertCategory
 } from "@/lib/actions";
-import { demoCategories, demoPrompts, demoSettings } from "@/lib/demo-data";
-import { isPreviewMode } from "@/lib/env";
-import { getPreviewUser } from "@/lib/preview-auth";
+import { hasSupabaseServiceRoleKey } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Category, Prompt, Profile, ReportWithRelations, SiteSettings } from "@/lib/types";
 
@@ -21,68 +19,30 @@ export default async function AdminDashboard({
   searchParams: Promise<{ message?: string }>;
 }) {
   const params = await searchParams;
-  const currentAdmin = isPreviewMode ? await getPreviewUser() : await assertAdmin();
-  if (!currentAdmin) {
-    return (
-      <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
-        <section className="panel rounded-lg p-6">
-          <p className="text-sm uppercase tracking-wide text-brand">Admin</p>
-          <h1 className="mt-2 text-3xl font-bold">Log in required</h1>
-          <p className="mt-2 text-slate-400">Use the configured admin email to access the control panel.</p>
-        </section>
-      </main>
-    );
-  }
-  if (isPreviewMode && (currentAdmin.role !== "admin" || (currentAdmin.email ?? "").toLowerCase() !== process.env.NEXT_PUBLIC_ADMIN_EMAIL?.toLowerCase())) {
-    return (
-      <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
-        <section className="panel rounded-lg p-6">
-          <p className="text-sm uppercase tracking-wide text-brand">Admin</p>
-          <h1 className="mt-2 text-3xl font-bold">Access denied</h1>
-          <p className="mt-2 text-slate-400">Only the configured admin email can open this dashboard.</p>
-        </section>
-      </main>
-    );
-  }
-  const previewReports: ReportWithRelations[] = [
-    {
-      id: "preview-report",
-      prompt_id: "demo-1",
-      reason: "Example report for moderation workflow.",
-      status: "open",
-      created_at: new Date().toISOString(),
-      prompts: { id: "demo-1", title: "Neon editorial portrait", hidden: false },
-      users: { email: "reporter@example.com" }
-    }
-  ];
-  const previewUsers: Profile[] = [
-    {
-      id: currentAdmin.id,
-      email: currentAdmin.email ?? "admin@example.com",
-      display_name: "Preview Admin",
-      avatar_url: null,
-      role: "admin",
-      created_at: new Date().toISOString()
-    }
-  ];
+  await assertAdmin();
 
-  const admin = isPreviewMode ? null : createAdminClient();
-  const [{ data: settings }, { data: categories }, { data: users }, { data: prompts }, { data: reports }] =
-    isPreviewMode
-      ? [
-          { data: demoSettings },
-          { data: demoCategories },
-          { data: previewUsers },
-          { data: demoPrompts },
-          { data: previewReports }
-        ]
-      : await Promise.all([
-          admin!.from("site_settings").select("*").eq("id", 1).single(),
-          admin!.from("categories").select("*").order("name"),
-          admin!.from("users").select("*").order("created_at", { ascending: false }),
-          admin!.from("prompts").select("*, categories(*), users(*)").order("created_at", { ascending: false }),
-          admin!.from("reports").select("*, prompts(id,title,hidden), users(email)").order("created_at", { ascending: false })
-        ]);
+  if (!hasSupabaseServiceRoleKey) {
+    return (
+      <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+        <section className="panel rounded-lg p-6">
+          <p className="text-sm uppercase tracking-wide text-brand">Admin</p>
+          <h1 className="mt-2 text-3xl font-bold">Supabase service role is not configured</h1>
+          <p className="mt-2 text-slate-400">
+            Add the server-only service role key in Vercel before using admin moderation tools.
+          </p>
+        </section>
+      </main>
+    );
+  }
+
+  const admin = createAdminClient();
+  const [{ data: settings }, { data: categories }, { data: users }, { data: prompts }, { data: reports }] = await Promise.all([
+    admin.from("site_settings").select("*").eq("id", 1).single(),
+    admin.from("categories").select("*").order("name"),
+    admin.from("users").select("*").order("created_at", { ascending: false }),
+    admin.from("prompts").select("*, categories(*), users(*)").order("created_at", { ascending: false }),
+    admin.from("reports").select("*, prompts(id,title,hidden), users(email)").order("created_at", { ascending: false })
+  ]);
 
   const siteSettings = settings as SiteSettings | null;
   const settingFields: Array<[keyof Pick<SiteSettings, "website_name" | "logo_text" | "hero_headline" | "hero_subheadline" | "footer_text">, string]> = [
@@ -186,7 +146,7 @@ export default async function AdminDashboard({
           <div className="mt-4 grid gap-3">
             {((users ?? []) as Profile[]).map((user) => (
               <div key={user.id} className="rounded-lg border border-white/10 bg-white/[0.04] p-3">
-                <p className="font-semibold">{user.display_name ?? user.email}</p>
+                <p className="font-semibold">{user.full_name ?? user.display_name ?? user.email}</p>
                 <p className="text-sm text-slate-400">{user.email} | {user.role}</p>
               </div>
             ))}

@@ -4,11 +4,11 @@ export function getAuthErrorMessage(error: { message?: string } | string | null 
 
   const normalized = message.toLowerCase();
 
-  if (normalized.includes("invalid login credentials")) return "Incorrect email or password.";
+  if (normalized.includes("invalid login credentials")) return "Wrong email or password.";
   if (normalized.includes("email not confirmed")) return "Verify your email before signing in.";
   if (normalized.includes("user already registered")) return "An account with this email already exists.";
-  if (normalized.includes("unable to validate email address")) return "Enter a valid email address.";
-  if (normalized.includes("email address is invalid")) return "Enter a valid email address.";
+  if (normalized.includes("unable to validate email address")) return "Invalid email";
+  if (normalized.includes("email address is invalid")) return "Invalid email";
   if (normalized.includes("password should be at least")) return "Password must be at least 8 characters.";
   if (normalized.includes("same_password")) return "Choose a new password that is different from the current one.";
   if (normalized.includes("expired")) return "This link has expired. Request a new one.";

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getAuthErrorMessage } from "@/lib/auth/errors";
 import { getAuthCallbackUrl } from "@/lib/auth/urls";
+import { getEmailValidationError, getPasswordValidationError, normalizeEmail } from "@/lib/auth/validation";
 import { createClient } from "@/lib/supabase/client";
 import { OAuthButtons } from "@/components/auth/oauth-buttons";
 import { PasswordField } from "@/components/auth/password-field";
@@ -25,6 +26,7 @@ export function SignupForm({
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialMessage) toast.success(initialMessage);
@@ -34,15 +36,31 @@ export function SignupForm({
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!authEnabled) {
-      toast.error("Supabase Auth is not configured yet.");
+      setFormError("Supabase is not configured");
+      toast.error("Supabase is not configured");
+      return;
+    }
+
+    const emailError = getEmailValidationError(email);
+    if (emailError) {
+      setFormError(emailError);
+      toast.error(emailError);
+      return;
+    }
+
+    const passwordError = getPasswordValidationError(password);
+    if (passwordError) {
+      setFormError(passwordError);
+      toast.error(passwordError);
       return;
     }
 
     try {
       setIsLoading(true);
+      setFormError(null);
       const supabase = createClient();
       const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
+        email: normalizeEmail(email),
         password,
         options: {
           emailRedirectTo: getAuthCallbackUrl("/dashboard"),
@@ -54,7 +72,9 @@ export function SignupForm({
       });
 
       if (error) {
-        toast.error(getAuthErrorMessage(error));
+        const message = getAuthErrorMessage(error);
+        setFormError(message);
+        toast.error(message);
         return;
       }
 
@@ -69,7 +89,9 @@ export function SignupForm({
       router.push("/login?message=Check%20your%20email%20to%20verify%20your%20account.");
       router.refresh();
     } catch (error) {
-      toast.error(getAuthErrorMessage(error instanceof Error ? error.message : "Unable to create account."));
+      const message = getAuthErrorMessage(error instanceof Error ? error.message : "Unable to create account.");
+      setFormError(message);
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -88,6 +110,12 @@ export function SignupForm({
         </div>
       ) : null}
 
+      {formError ? (
+        <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-100" role="alert">
+          {formError}
+        </div>
+      ) : null}
+
       <OAuthButtons disabled={!authEnabled || isLoading} />
 
       <div className="relative flex items-center justify-center py-1 text-xs uppercase tracking-[0.24em] text-slate-500">
@@ -97,15 +125,45 @@ export function SignupForm({
 
       <label className="block space-y-2">
         <span className="label">Full name</span>
-        <input className="field" name="full_name" autoComplete="name" placeholder="Your name" value={fullName} onChange={(event) => setFullName(event.target.value)} required minLength={2} maxLength={80} />
+        <input
+          className="field"
+          name="full_name"
+          autoComplete="name"
+          placeholder="Your name"
+          value={fullName}
+          onChange={(event) => setFullName(event.target.value)}
+          required
+          minLength={2}
+          maxLength={80}
+          disabled={!authEnabled || isLoading}
+        />
       </label>
 
       <label className="block space-y-2">
         <span className="label">Email</span>
-        <input className="field" name="email" type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={(event) => setEmail(event.target.value)} required />
+        <input
+          className="field"
+          name="email"
+          type="email"
+          autoComplete="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          required
+          disabled={!authEnabled || isLoading}
+          inputMode="email"
+        />
       </label>
 
-      <PasswordField label="Password" name="password" autoComplete="new-password" placeholder="At least 8 characters" value={password} onChange={setPassword} />
+      <PasswordField
+        label="Password"
+        name="password"
+        autoComplete="new-password"
+        placeholder="At least 8 characters"
+        value={password}
+        onChange={setPassword}
+        disabled={!authEnabled || isLoading}
+      />
 
       <button className="btn-primary w-full justify-center" disabled={!authEnabled || isLoading}>
         {isLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
@@ -114,7 +172,9 @@ export function SignupForm({
 
       <p className="text-center text-sm text-slate-400">
         Already have an account?{" "}
-        <Link href="/login" className="text-brand transition hover:text-brand/80">Log in</Link>
+        <Link href="/login" className="text-brand transition hover:text-brand/80">
+          Log in
+        </Link>
       </p>
     </form>
   );

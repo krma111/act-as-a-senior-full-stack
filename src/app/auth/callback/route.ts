@@ -1,7 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getSupabaseAnonKey, getSupabaseUrl, siteUrl } from "@/lib/env";
+import { getSupabaseAnonKey, getSupabaseUrl, hasSupabaseEnv, siteUrl } from "@/lib/env";
 
 type CookieToSet = {
   name: string;
@@ -21,6 +21,10 @@ export async function GET(request: Request) {
 
   if (!code) {
     return NextResponse.redirect(`${origin || siteUrl}/login?error=${encodeURIComponent("Missing authentication code. Please try again.")}`);
+  }
+
+  if (!hasSupabaseEnv) {
+    return NextResponse.redirect(`${origin || siteUrl}/login?error=${encodeURIComponent("Supabase is not configured")}`);
   }
 
   const cookieStore = await cookies();

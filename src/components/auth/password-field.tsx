@@ -10,7 +10,8 @@ export function PasswordField({
   placeholder,
   minLength = 8,
   value,
-  onChange
+  onChange,
+  disabled
 }: {
   label: string;
   name: string;
@@ -19,6 +20,7 @@ export function PasswordField({
   minLength?: number;
   value?: string;
   onChange?: (value: string) => void;
+  disabled?: boolean;
 }) {
   const [visible, setVisible] = useState(false);
 
@@ -35,12 +37,14 @@ export function PasswordField({
           minLength={minLength}
           value={value}
           onChange={onChange ? (event) => onChange(event.target.value) : undefined}
+          disabled={disabled}
           required
         />
         <button
           type="button"
           className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-white"
           onClick={() => setVisible((current) => !current)}
+          disabled={disabled}
           aria-label={visible ? "Hide password" : "Show password"}
         >
           {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
