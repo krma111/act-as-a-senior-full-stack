@@ -5,49 +5,54 @@ import { getSupabaseAnonKey, getSupabaseUrl, hasSupabaseEnv } from "@/lib/env";
 const authPages = new Set(["/login", "/signup", "/forgot-password"]);
 
 export async function updateSession(request: NextRequest) {
-  if (!hasSupabaseEnv) return NextResponse.next({ request });
+  const fallbackResponse = NextResponse.next({ request });
+  if (!hasSupabaseEnv) return fallbackResponse;
 
   let response = NextResponse.next({ request });
 
-  const supabase = createServerClient(
-    getSupabaseUrl(),
-    getSupabaseAnonKey(),
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          );
+  try {
+    const supabase = createServerClient(
+      getSupabaseUrl(),
+      getSupabaseAnonKey(),
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+            cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+            response = NextResponse.next({ request });
+            cookiesToSet.forEach(({ name, value, options }) =>
+              response.cookies.set(name, value, options)
+            );
+          }
         }
       }
+    );
+
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+
+    const { pathname, search } = request.nextUrl;
+
+    if (!user && pathname.startsWith("/dashboard")) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      loginUrl.search = "";
+      loginUrl.searchParams.set("next", `${pathname}${search}`);
+      return NextResponse.redirect(loginUrl);
     }
-  );
 
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
+    if (user && authPages.has(pathname)) {
+      const dashboardUrl = request.nextUrl.clone();
+      dashboardUrl.pathname = "/dashboard";
+      dashboardUrl.search = "";
+      return NextResponse.redirect(dashboardUrl);
+    }
 
-  const { pathname, search } = request.nextUrl;
-
-  if (!user && pathname.startsWith("/dashboard")) {
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/login";
-    loginUrl.search = "";
-    loginUrl.searchParams.set("next", `${pathname}${search}`);
-    return NextResponse.redirect(loginUrl);
+    return response;
+  } catch {
+    return fallbackResponse;
   }
-
-  if (user && authPages.has(pathname)) {
-    const dashboardUrl = request.nextUrl.clone();
-    dashboardUrl.pathname = "/dashboard";
-    dashboardUrl.search = "";
-    return NextResponse.redirect(dashboardUrl);
-  }
-
-  return response;
 }
