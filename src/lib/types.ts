@@ -8,7 +8,7 @@ export type Category = {
 export type Profile = {
   id: string;
   email: string;
-  full_name: string | null;
+  full_name?: string | null;
   display_name?: string | null;
   avatar_url: string | null;
   role: "user" | "admin" | "creator";
