@@ -1,0 +1,9 @@
+.env*.local
+.next
+node_modules
+.tools
+dist
+coverage
+*.log
+tsconfig.tsbuildinfo
+.codex-tree-elements.json
