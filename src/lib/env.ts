@@ -2,6 +2,19 @@ function cleanEnv(value: string | undefined) {
   return value?.trim() ?? "";
 }
 
+function isUsableUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && Boolean(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function isUsableSupabaseKey(value: string) {
+  return value.length > 20 && !value.includes("<") && !value.toLowerCase().includes("your-");
+}
+
 export function requiredEnv(name: string) {
   const value = cleanEnv(process.env[name]);
   if (!value) throw new Error(`Missing required environment variable: ${name}`);
@@ -10,7 +23,7 @@ export function requiredEnv(name: string) {
 
 export const supabaseUrl = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
 export const supabaseAnonKey = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-export const hasSupabaseEnv = Boolean(supabaseUrl && supabaseAnonKey);
+export const hasSupabaseEnv = isUsableUrl(supabaseUrl) && isUsableSupabaseKey(supabaseAnonKey);
 // Public read-only pages can fall back to demo content when Supabase is not configured.
 // Authentication routes must not use preview auth or fake user data.
 export const isPreviewMode = !hasSupabaseEnv;
