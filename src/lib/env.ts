@@ -1,7 +1,3 @@
-const previewSupabaseUrl = "https://demo.supabase.co";
-const previewAnonKey = "preview-anon-key";
-const previewAdminEmail = "admin@example.com";
-
 function cleanEnv(value: string | undefined) {
   return value?.trim() ?? "";
 }
@@ -14,19 +10,20 @@ export function requiredEnv(name: string) {
 
 export const supabaseUrl = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
 export const supabaseAnonKey = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-export const isPreviewMode =
-  !supabaseUrl ||
-  !supabaseAnonKey ||
-  supabaseUrl.includes("demo.supabase.co") ||
-  supabaseAnonKey === previewAnonKey;
+export const hasSupabaseEnv = Boolean(supabaseUrl && supabaseAnonKey);
+// Public read-only pages can fall back to demo content when Supabase is not configured.
+// Authentication routes must not use preview auth or fake user data.
+export const isPreviewMode = !hasSupabaseEnv;
 
-export const siteUrl = cleanEnv(process.env.NEXT_PUBLIC_SITE_URL) || "http://localhost:3000";
-export const adminEmail = cleanEnv(process.env.NEXT_PUBLIC_ADMIN_EMAIL || previewAdminEmail).toLowerCase();
+const vercelUrl = cleanEnv(process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL);
+export const siteUrl = cleanEnv(process.env.NEXT_PUBLIC_SITE_URL) || (vercelUrl ? `https://${vercelUrl}` : "http://localhost:3000");
+export const adminEmail = cleanEnv(process.env.NEXT_PUBLIC_ADMIN_EMAIL).toLowerCase();
+export const isGithubOAuthEnabled = cleanEnv(process.env.NEXT_PUBLIC_ENABLE_GITHUB_OAUTH).toLowerCase() === "true";
 
 export function getSupabaseUrl() {
-  return isPreviewMode ? previewSupabaseUrl : requiredEnv("NEXT_PUBLIC_SUPABASE_URL");
+  return requiredEnv("NEXT_PUBLIC_SUPABASE_URL");
 }
 
 export function getSupabaseAnonKey() {
-  return isPreviewMode ? previewAnonKey : requiredEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  return requiredEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
 }

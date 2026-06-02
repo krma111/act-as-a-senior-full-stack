@@ -17,11 +17,11 @@ export default async function EditPrompt({
   const {
     data: { user }
   } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  if (!user) redirect("/login");
 
   const [prompt, categories] = await Promise.all([getPrompt(id), getCategories()]);
   const { data: viewer } = await supabase.from("users").select("role").eq("id", user.id).single();
-  if (!prompt || (prompt.user_id !== user.id && viewer?.role !== "admin")) redirect("/profile");
+  if (!prompt || (prompt.user_id !== user.id && viewer?.role !== "admin")) redirect("/dashboard");
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">

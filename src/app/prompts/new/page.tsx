@@ -18,7 +18,7 @@ export default async function NewPrompt({
   const {
     data: { user }
   } = supabase ? await supabase.auth.getUser() : { data: { user: previewUser } };
-  if (!user) redirect("/auth/login");
+  if (!user) redirect("/login?next=/prompts/new");
   const categories = await getCategories();
 
   return (

@@ -41,10 +41,10 @@ export async function signUp(formData: FormData) {
   const displayName = asString(formData, "display_name");
   const role = email.toLowerCase() === adminEmail.toLowerCase() ? "admin" : "user";
 
-  if (!email || password.length < 8) redirectWithMessage("/auth/signup", "Enter a valid email and an 8+ character password.");
+  if (!email || password.length < 8) redirectWithMessage("/signup", "Enter a valid email and an 8+ character password.");
   if (isPreviewMode) {
     await setPreviewUser(email, displayName);
-    redirect("/profile?message=Preview account created.");
+    redirect("/dashboard?message=Preview account created.");
   }
 
   const supabase = await createClient();
@@ -53,21 +53,21 @@ export async function signUp(formData: FormData) {
     email,
     password,
     options: {
-      emailRedirectTo: `${siteUrl}/auth/callback?next=/profile`,
+      emailRedirectTo: `${siteUrl}/auth/callback`,
       data: { display_name: displayName, role }
     }
   });
 
-  if (error) redirectWithMessage("/auth/signup", error.message);
-  redirect("/profile");
+  if (error) redirectWithMessage("/signup", error.message);
+  redirect("/dashboard");
 }
 
 export async function login(formData: FormData) {
   if (isPreviewMode) {
     const email = asString(formData, "email");
-    if (!email) redirectWithMessage("/auth/login", "Enter your email.");
+    if (!email) redirectWithMessage("/login", "Enter your email.");
     await setPreviewUser(email);
-    redirect("/profile?message=Preview login active.");
+    redirect("/dashboard?message=Preview login active.");
   }
 
   const supabase = await createClient();
@@ -76,8 +76,8 @@ export async function login(formData: FormData) {
     password: asString(formData, "password")
   });
 
-  if (error) redirectWithMessage("/auth/login", error.message);
-  redirect("/profile");
+  if (error) redirectWithMessage("/login", error.message);
+  redirect("/dashboard");
 }
 
 export async function logout() {
@@ -103,14 +103,14 @@ export async function createPrompt(formData: FormData) {
   if (file.size > 8 * 1024 * 1024) redirectWithMessage("/prompts/new", "Images must be smaller than 8 MB.");
 
   if (isPreviewMode) {
-    redirect(`/profile?message=${encodeURIComponent("Preview post saved. Connect Supabase to persist uploads and images.")}`);
+    redirect(`/dashboard?message=${encodeURIComponent("Preview post saved. Connect Supabase to persist uploads and images.")}`);
   }
 
   const supabase = await createClient();
   const {
     data: { user }
   } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  if (!user) redirect("/login?next=/prompts/new");
 
   const extension = (file.name.split(".").pop() ?? "png").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
   const filePath = `${user.id}/${crypto.randomUUID()}.${extension}`;
@@ -147,7 +147,7 @@ export async function deleteOwnPrompt(formData: FormData) {
   const id = asString(formData, "id");
   await supabase.from("prompts").delete().eq("id", id);
   revalidatePath("/");
-  redirect("/profile");
+  redirect("/dashboard");
 }
 
 export async function updatePrompt(formData: FormData) {
@@ -155,7 +155,7 @@ export async function updatePrompt(formData: FormData) {
   const {
     data: { user }
   } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  if (!user) redirect("/login");
 
   const id = asString(formData, "id");
   const validationError = validatePromptPayload(formData);
@@ -180,7 +180,7 @@ export async function updatePrompt(formData: FormData) {
 
   if (error) redirectWithMessage(`/prompts/${id}/edit`, error.message);
   revalidatePath(`/prompts/${id}`);
-  revalidatePath("/profile");
+  revalidatePath("/dashboard");
   redirect(`/prompts/${id}`);
 }
 
@@ -232,7 +232,7 @@ export async function incrementCopyCount(promptId: string) {
 export async function reportPrompt(formData: FormData) {
   if (isPreviewMode) {
     const user = await getPreviewUser();
-    if (!user) redirect("/auth/login");
+    if (!user) redirect("/login");
     const promptId = asString(formData, "prompt_id");
     redirect(`/prompts/${promptId}?message=${encodeURIComponent("Preview report sent to the admin queue.")}`);
   }
@@ -241,7 +241,7 @@ export async function reportPrompt(formData: FormData) {
   const {
     data: { user }
   } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  if (!user) redirect("/login");
 
   const promptId = asString(formData, "prompt_id");
   await supabase.from("reports").insert({
@@ -256,7 +256,7 @@ export async function reportPrompt(formData: FormData) {
 export async function assertAdmin() {
   if (isPreviewMode) {
     const user = await getPreviewUser();
-    if (!user) redirect("/auth/login");
+    if (!user) redirect("/login");
     if (user.role !== "admin" || user.email.toLowerCase() !== adminEmail) redirect("/");
     return user;
   }
@@ -265,7 +265,7 @@ export async function assertAdmin() {
   const {
     data: { user }
   } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  if (!user) redirect("/login");
   const { data } = await supabase.from("users").select("role,email").eq("id", user.id).single();
   if (data?.role !== "admin" || data.email?.toLowerCase() !== adminEmail.toLowerCase()) redirect("/");
   return user;
@@ -366,25 +366,25 @@ export async function adminHideReportedPrompt(formData: FormData) {
 export async function updateProfile(formData: FormData) {
   if (isPreviewMode) {
     const user = await getPreviewUser();
-    if (!user) redirect("/auth/login");
+    if (!user) redirect("/login");
     await setPreviewUser(user.email, asString(formData, "display_name"));
-    redirect(`/profile?message=${encodeURIComponent("Preview profile updated.")}`);
+    redirect(`/dashboard?message=${encodeURIComponent("Preview profile updated.")}`);
   }
 
   const supabase = await createClient();
   const {
     data: { user }
   } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login");
+  if (!user) redirect("/login");
 
   const displayName = asString(formData, "display_name");
   if (displayName.length < 2 || displayName.length > 80) {
-    redirectWithMessage("/profile", "Display name must be between 2 and 80 characters.");
+    redirectWithMessage("/dashboard", "Display name must be between 2 and 80 characters.");
   }
 
   const { error } = await supabase.from("users").update({ display_name: displayName }).eq("id", user.id);
-  if (error) redirectWithMessage("/profile", error.message);
+  if (error) redirectWithMessage("/dashboard", error.message);
 
-  revalidatePath("/profile");
-  redirect(`/profile?message=${encodeURIComponent("Profile updated.")}`);
+  revalidatePath("/dashboard");
+  redirect(`/dashboard?message=${encodeURIComponent("Profile updated.")}`);
 }

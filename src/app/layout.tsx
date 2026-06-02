@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Toaster } from "sonner";
-import { LogOut, Plus, ShieldCheck, User } from "lucide-react";
+import { LogOut, ShieldCheck } from "lucide-react";
 import "./globals.css";
-import { logout } from "@/lib/actions";
+import { logout } from "@/lib/auth/actions";
+import { getAuthSessionState } from "@/lib/auth/session";
 import { getSiteSettings } from "@/lib/data";
-import { isPreviewMode } from "@/lib/env";
-import { getPreviewUser } from "@/lib/preview-auth";
-import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -22,18 +20,22 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+function getInitials(value: string) {
+  return (
+    value
+      .split(" ")
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "P"
+  );
+}
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const settings = await getSiteSettings();
-  const supabase = isPreviewMode ? null : await createClient();
-  const previewUser = await getPreviewUser();
-  const {
-    data: { user }
-  } = supabase ? await supabase.auth.getUser() : { data: { user: previewUser } };
-  const { data: profile } = previewUser
-    ? { data: previewUser }
-    : user && supabase
-    ? await supabase.from("users").select("role,display_name,email").eq("id", user.id).single()
-    : { data: null };
+  const [settings, authState] = await Promise.all([getSiteSettings(), getAuthSessionState()]);
+  const { user, profile } = authState;
+  const displayName = profile?.full_name ?? profile?.display_name ?? user?.email?.split("@")[0] ?? "Account";
+  const avatarUrl = profile?.avatar_url ?? (typeof user?.user_metadata?.avatar_url === "string" ? user.user_metadata.avatar_url : null);
 
   return (
     <html lang="en">
@@ -45,30 +47,41 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand text-slate-950 shadow-glow">P</span>
                 {settings.logo_text}
               </Link>
+
               <div className="flex flex-wrap items-center gap-2">
-                <Link href="/prompts/new" className="btn-primary">
-                  <Plus className="h-4 w-4" /> Post
-                </Link>
-                {profile?.role === "admin" && profile.email?.toLowerCase() === process.env.NEXT_PUBLIC_ADMIN_EMAIL?.toLowerCase() && (
-                  <Link href="/admin" className="btn-ghost">
-                    <ShieldCheck className="h-4 w-4" /> Admin
-                  </Link>
-                )}
                 {user ? (
                   <>
-                    <Link href="/profile" className="btn-ghost">
-                      <User className="h-4 w-4" /> {profile?.display_name ?? "Profile"}
-                    </Link>
+                    {profile?.role === "admin" ? (
+                      <Link href="/admin" className="btn-ghost">
+                        <ShieldCheck className="h-4 w-4" /> Admin
+                      </Link>
+                    ) : null}
+                    <Link href="/dashboard" className="btn-ghost">Dashboard</Link>
+                    <div className="hidden items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 md:flex">
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt={displayName} className="h-8 w-8 rounded-xl border border-white/10 object-cover" />
+                      ) : (
+                        <span className="grid h-8 w-8 place-items-center rounded-xl bg-brand/10 text-xs font-bold text-brand">
+                          {getInitials(displayName)}
+                        </span>
+                      )}
+                      <div className="text-left leading-tight">
+                        <p className="text-sm font-semibold text-white">{displayName}</p>
+                        <p className="text-xs text-slate-400">{profile?.email ?? user.email}</p>
+                      </div>
+                    </div>
                     <form action={logout}>
                       <button className="btn-ghost" aria-label="Log out">
                         <LogOut className="h-4 w-4" />
+                        <span className="hidden sm:inline">Logout</span>
                       </button>
                     </form>
                   </>
                 ) : (
-                  <Link href="/auth/login" className="btn-ghost">
-                    Log in
-                  </Link>
+                  <>
+                    <Link href="/login" className="btn-ghost">Login</Link>
+                    <Link href="/signup" className="btn-primary">Signup</Link>
+                  </>
                 )}
               </div>
             </nav>
