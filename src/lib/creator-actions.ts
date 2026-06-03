@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { hasSupabaseEnv } from "@/lib/env";
+import { hasSupabaseEnv, hasSupabaseServiceRoleKey } from "@/lib/env";
+
+const maxImageSizeBytes = 8 * 1024 * 1024;
 
 function asString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -54,6 +56,7 @@ function validatePromptForm(formData: FormData) {
 
 async function requireCreatorSession(nextPath: string) {
   if (!hasSupabaseEnv) redirectWithMessage("/login", "error", "Supabase is not configured.");
+  if (!hasSupabaseServiceRoleKey) redirectWithMessage(nextPath, "error", "Server upload service is not configured.");
 
   const supabase = await createClient();
   const {
@@ -64,7 +67,10 @@ async function requireCreatorSession(nextPath: string) {
   return { supabase, user };
 }
 
-async function ensureCreatorProfile(user: { id: string; email?: string | null; user_metadata?: Record<string, unknown> }) {
+async function ensureCreatorProfile(
+  user: { id: string; email?: string | null; user_metadata?: Record<string, unknown> },
+  errorPath: string
+) {
   const admin = createAdminClient();
   const fullName =
     typeof user.user_metadata?.full_name === "string"
@@ -73,7 +79,7 @@ async function ensureCreatorProfile(user: { id: string; email?: string | null; u
       ? user.user_metadata.display_name
       : user.email?.split("@")[0] ?? "Creator";
 
-  await admin.from("profiles").upsert(
+  const { error } = await admin.from("profiles").upsert(
     {
       id: user.id,
       email: user.email ?? null,
@@ -83,6 +89,10 @@ async function ensureCreatorProfile(user: { id: string; email?: string | null; u
     },
     { onConflict: "id" }
   );
+
+  if (error) {
+    redirectWithMessage(errorPath, "error", `Unable to prepare creator profile: ${error.message}`);
+  }
 }
 
 async function uploadPromptImage(formData: FormData, userId: string, currentImageUrl?: string | null) {
@@ -93,7 +103,7 @@ async function uploadPromptImage(formData: FormData, userId: string, currentImag
   }
 
   if (!file.type.startsWith("image/")) redirectWithMessage("/dashboard/upload", "error", "Upload a valid image file.");
-  if (file.size > 8 * 1024 * 1024) redirectWithMessage("/dashboard/upload", "error", "Images must be smaller than 8 MB.");
+  if (file.size > maxImageSizeBytes) redirectWithMessage("/dashboard/upload", "error", "Images must be smaller than 8 MB.");
 
   const supabase = await createClient();
   const extension = (file.name.split(".").pop() ?? "png").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
@@ -135,7 +145,7 @@ export async function createCreatorPrompt(formData: FormData) {
   if (validationError) redirectWithMessage("/dashboard/upload", "error", validationError);
 
   const { user } = await requireCreatorSession("/dashboard/upload");
-  await ensureCreatorProfile(user);
+  await ensureCreatorProfile(user, "/dashboard/upload");
   const imageUrl = await uploadPromptImage(formData, user.id);
 
   const admin = createAdminClient();
@@ -156,7 +166,7 @@ export async function updateCreatorPrompt(formData: FormData) {
   if (validationError) redirectWithMessage(`/dashboard/edit/${id}`, "error", validationError);
 
   const { user } = await requireCreatorSession(`/dashboard/edit/${id}`);
-  await ensureCreatorProfile(user);
+  await ensureCreatorProfile(user, `/dashboard/edit/${id}`);
 
   const admin = createAdminClient();
   const { data: current, error: currentError } = await admin
