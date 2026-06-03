@@ -37,13 +37,16 @@ export const isGoogleOAuthEnabled = cleanEnv(process.env.NEXT_PUBLIC_ENABLE_GOOG
 export const isGithubOAuthEnabled = cleanEnv(process.env.NEXT_PUBLIC_ENABLE_GITHUB_OAUTH).toLowerCase() === "true";
 
 export function getSupabaseUrl() {
-  return requiredEnv("NEXT_PUBLIC_SUPABASE_URL");
+  if (!supabaseUrl) throw new Error("Missing required environment variable: NEXT_PUBLIC_SUPABASE_URL");
+  return supabaseUrl;
 }
 
 export function getSupabaseAnonKey() {
-  return requiredEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  if (!supabaseAnonKey) throw new Error("Missing required environment variable: NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  return supabaseAnonKey;
 }
 
 export function getSupabaseServiceRoleKey() {
-  return requiredEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseServiceRoleKey) throw new Error("Missing required environment variable: SUPABASE_SERVICE_ROLE_KEY");
+  return supabaseServiceRoleKey;
 }
