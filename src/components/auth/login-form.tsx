@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { getClientAuthErrorMessage } from "@/lib/auth/client-errors";
 import { getAuthErrorMessage } from "@/lib/auth/errors";
 import { getEmailValidationError, getPasswordValidationError, normalizeEmail } from "@/lib/auth/validation";
 import { createClient } from "@/lib/supabase/client";
@@ -76,7 +77,7 @@ export function LoginForm({
       router.push(safeNextPath);
       router.refresh();
     } catch (error) {
-      const message = getAuthErrorMessage(error instanceof Error ? error.message : "Unable to sign in.");
+      const message = getClientAuthErrorMessage(error, "Unable to sign in.");
       setFormError(message);
       toast.error(message);
     } finally {
