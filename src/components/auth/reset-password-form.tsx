@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { getClientAuthErrorMessage } from "@/lib/auth/client-errors";
 import { getAuthErrorMessage } from "@/lib/auth/errors";
 import { getPasswordValidationError } from "@/lib/auth/validation";
 import { createClient } from "@/lib/supabase/client";
@@ -75,7 +76,7 @@ export function ResetPasswordForm({
       router.push("/dashboard");
       router.refresh();
     } catch (error) {
-      const message = getAuthErrorMessage(error instanceof Error ? error.message : "Unable to update password.");
+      const message = getClientAuthErrorMessage(error, "Unable to update password.");
       setFormError(message);
       toast.error(message);
     } finally {
