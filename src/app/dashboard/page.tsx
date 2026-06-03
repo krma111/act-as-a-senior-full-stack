@@ -74,10 +74,11 @@ export default async function DashboardPage({
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Link href="/prompts/new" className="btn-primary">
+            <Link href="/dashboard/upload" className="btn-primary">
               <Sparkles className="h-4 w-4" />
-              Create prompt
+              Upload prompt
             </Link>
+            <Link href="/dashboard/my-prompts" className="btn-ghost">My prompts</Link>
             <Link href="/" className="btn-ghost">Explore vault</Link>
           </div>
         </div>
@@ -139,7 +140,7 @@ export default async function DashboardPage({
               <p className="text-lg font-semibold text-white">No data yet. Start creating your first prompt.</p>
               <p className="mt-2 text-sm text-slate-400">Your saved prompts will appear here after you start using the vault.</p>
               <div className="mt-5 flex flex-wrap justify-center gap-3">
-                <Link href="/prompts/new" className="btn-primary">Create prompt</Link>
+                <Link href="/dashboard/upload" className="btn-primary">Create prompt</Link>
                 <Link href="/" className="btn-ghost">Explore prompts</Link>
               </div>
             </div>

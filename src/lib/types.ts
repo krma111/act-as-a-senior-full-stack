@@ -23,6 +23,7 @@ export type Prompt = {
   user_id: string;
   category_id?: string | null;
   title: string;
+  description?: string | null;
   prompt_text: string;
   negative_prompt: string | null;
   image_url: string;
@@ -30,6 +31,8 @@ export type Prompt = {
   visibility?: "public" | "private";
   aspect_ratio?: string | null;
   category?: string;
+  reference_required?: boolean;
+  difficulty?: "beginner" | "intermediate" | "advanced";
   tags: string[];
   copy_count: number;
   like_count: number;
