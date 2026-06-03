@@ -10,7 +10,7 @@ import { getAuthErrorMessage } from "@/lib/auth/errors";
 import { getAuthCallbackUrl } from "@/lib/auth/urls";
 import { getEmailValidationError, getPasswordValidationError, normalizeEmail } from "@/lib/auth/validation";
 import { createClient } from "@/lib/supabase/client";
-import { OAuthButtons } from "@/components/auth/oauth-buttons";
+import { hasOAuthProviders, OAuthButtons } from "@/components/auth/oauth-buttons";
 import { PasswordField } from "@/components/auth/password-field";
 
 export function SignupForm({
@@ -117,12 +117,15 @@ export function SignupForm({
         </div>
       ) : null}
 
-      <OAuthButtons disabled={!authEnabled || isLoading} />
-
-      <div className="relative flex items-center justify-center py-1 text-xs uppercase tracking-[0.24em] text-slate-500">
-        <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-white/10" />
-        <span className="relative bg-[#091015] px-3">or continue with email</span>
-      </div>
+      {hasOAuthProviders ? (
+        <>
+          <OAuthButtons disabled={!authEnabled || isLoading} />
+          <div className="relative flex items-center justify-center py-1 text-xs uppercase tracking-[0.24em] text-slate-500">
+            <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-white/10" />
+            <span className="relative bg-[#091015] px-3">or continue with email</span>
+          </div>
+        </>
+      ) : null}
 
       <label className="block space-y-2">
         <span className="label">Full name</span>
