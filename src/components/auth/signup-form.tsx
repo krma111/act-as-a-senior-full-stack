@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { getClientAuthErrorMessage } from "@/lib/auth/client-errors";
 import { getAuthErrorMessage } from "@/lib/auth/errors";
 import { getAuthCallbackUrl } from "@/lib/auth/urls";
 import { getEmailValidationError, getPasswordValidationError, normalizeEmail } from "@/lib/auth/validation";
@@ -89,7 +90,7 @@ export function SignupForm({
       router.push("/login?message=Check%20your%20email%20to%20verify%20your%20account.");
       router.refresh();
     } catch (error) {
-      const message = getAuthErrorMessage(error instanceof Error ? error.message : "Unable to create account.");
+      const message = getClientAuthErrorMessage(error, "Unable to create account.");
       setFormError(message);
       toast.error(message);
     } finally {
