@@ -7,30 +7,93 @@ function sanitizeSearch(value: string) {
   return value.replace(/[%_{}()[\],"'\\]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
 }
 
+type PromptRow = {
+  id: string;
+  user_id: string;
+  title: string;
+  image_url: string;
+  prompt_text: string;
+  negative_prompt: string | null;
+  ai_model: string | null;
+  aspect_ratio: string | null;
+  category: string;
+  tags: string[];
+  status: "pending" | "approved" | "rejected";
+  rejection_reason: string | null;
+  copy_count: number;
+  view_count: number;
+  featured: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function categoryFromName(name: string): Category {
+  return {
+    id: slugify(name) || "uncategorized",
+    name,
+    slug: slugify(name) || "uncategorized",
+    description: null
+  };
+}
+
+function normalizePrompt(row: PromptRow): Prompt {
+  const category = categoryFromName(row.category || "Uncategorized");
+
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    category_id: null,
+    title: row.title,
+    prompt_text: row.prompt_text,
+    negative_prompt: row.negative_prompt,
+    image_url: row.image_url,
+    ai_model: row.ai_model ?? "Image model",
+    visibility: row.status === "approved" ? "public" : "private",
+    aspect_ratio: row.aspect_ratio,
+    category: category.name,
+    tags: Array.isArray(row.tags) ? row.tags : [],
+    copy_count: row.copy_count ?? 0,
+    like_count: 0,
+    view_count: row.view_count ?? 0,
+    featured: Boolean(row.featured),
+    hidden: row.status !== "approved",
+    status: row.status,
+    rejection_reason: row.rejection_reason,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    categories: category,
+    users: null
+  };
+}
+
 export async function getSiteSettings(): Promise<SiteSettings> {
   if (isPreviewMode) return demoSettings;
 
-  const supabase = await createClient();
-  const { data } = await supabase.from("site_settings").select("*").eq("id", 1).single();
-  return (
-    data ?? {
-      id: 1,
-      website_name: "PromptVault",
-      logo_text: "PromptVault",
-      hero_headline: "Discover and share powerful AI image prompts",
-      hero_subheadline: "Browse battle-tested prompts, save favorites, and publish your best image generations.",
-      footer_text: "Copyright 2026 PromptVault. All rights reserved.",
-      admin_email: ""
-    }
-  );
+  return {
+    id: 1,
+    website_name: "PromptVault",
+    logo_text: "PromptVault",
+    hero_headline: "Discover and share powerful AI image prompts",
+    hero_subheadline: "Browse battle-tested prompts, save favorites, and publish your best image generations.",
+    footer_text: "Copyright 2026 PromptVault. All rights reserved.",
+    admin_email: ""
+  };
 }
 
 export async function getCategories(): Promise<Category[]> {
   if (isPreviewMode) return demoCategories;
 
   const supabase = await createClient();
-  const { data } = await supabase.from("categories").select("*").order("name");
-  return data ?? [];
+  const { data } = await supabase.from("prompts").select("category").eq("status", "approved").order("category");
+  const names = Array.from(new Set((data ?? []).map((row) => row.category).filter(Boolean)));
+  return names.map(categoryFromName);
 }
 
 export async function getPrompts(options?: {
@@ -65,34 +128,15 @@ export async function getPrompts(options?: {
     return filtered.slice(0, options?.limit ?? 12);
   }
 
-  const supabase = await createClient();
-  let categoryId: string | null = null;
-  if (options?.category) {
-    const { data: category } = await supabase
-      .from("categories")
-      .select("id")
-      .eq("slug", options.category)
-      .maybeSingle();
-    categoryId = category?.id ?? null;
-  }
-
   const search = options?.search ? sanitizeSearch(options.search) : "";
-  let matchingCategoryIds: string[] = [];
-  if (search) {
-    const { data: categoryMatches } = await supabase
-      .from("categories")
-      .select("id")
-      .or(`name.ilike.%${search}%,slug.ilike.%${search}%`);
-    matchingCategoryIds = (categoryMatches ?? []).map((category) => category.id);
-  }
 
+  const supabase = await createClient();
   let query = supabase
     .from("prompts")
-    .select("*, categories(*), users(*)")
-    .eq("visibility", "public")
-    .eq("hidden", false);
+    .select("*")
+    .eq("status", "approved");
 
-  if (options?.category) query = categoryId ? query.eq("category_id", categoryId) : query.eq("category_id", "00000000-0000-0000-0000-000000000000");
+  if (options?.category) query = query.ilike("category", options.category.replace(/-/g, " "));
   if (options?.aspectRatio) query = query.eq("aspect_ratio", options.aspectRatio);
   if (options?.featured) query = query.eq("featured", true);
   if (search) {
@@ -100,20 +144,20 @@ export async function getPrompts(options?: {
     const orParts = [
       `title.ilike.%${search}%`,
       `prompt_text.ilike.%${search}%`,
-      `ai_model.ilike.%${search}%`
+      `ai_model.ilike.%${search}%`,
+      `category.ilike.%${search}%`
     ];
     if (tag && !/\s/.test(tag)) orParts.push(`tags.ov.{${tag}}`);
-    if (matchingCategoryIds.length) orParts.push(`category_id.in.(${matchingCategoryIds.join(",")})`);
     query = query.or(orParts.join(","));
   }
 
   query =
     options?.order === "trending"
-      ? query.order("like_count", { ascending: false }).order("copy_count", { ascending: false })
+      ? query.order("copy_count", { ascending: false }).order("view_count", { ascending: false })
       : query.order("created_at", { ascending: false });
 
   const { data } = await query.limit(options?.limit ?? 12);
-  return (data ?? []) as Prompt[];
+  return ((data ?? []) as PromptRow[]).map(normalizePrompt);
 }
 
 export async function getPrompt(id: string) {
@@ -122,8 +166,8 @@ export async function getPrompt(id: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("prompts")
-    .select("*, categories(*), users(*)")
+    .select("*")
     .eq("id", id)
     .single();
-  return data as Prompt | null;
+  return data ? normalizePrompt(data as PromptRow) : null;
 }
