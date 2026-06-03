@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Github, LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
+import { getClientAuthErrorMessage } from "@/lib/auth/client-errors";
 import { getAuthErrorMessage } from "@/lib/auth/errors";
 import { getAuthCallbackUrl } from "@/lib/auth/urls";
 import { isGithubOAuthEnabled, isGoogleOAuthEnabled } from "@/lib/env";
@@ -11,8 +12,14 @@ import { GoogleIcon } from "@/components/auth/icons";
 
 type Provider = "google" | "github";
 
+export const hasOAuthProviders = isGoogleOAuthEnabled || isGithubOAuthEnabled;
+
 export function OAuthButtons({ disabled }: { disabled?: boolean }) {
   const [activeProvider, setActiveProvider] = useState<Provider | null>(null);
+
+  if (!hasOAuthProviders) {
+    return null;
+  }
 
   async function signIn(provider: Provider) {
     if (disabled) {
@@ -22,6 +29,11 @@ export function OAuthButtons({ disabled }: { disabled?: boolean }) {
 
     if (provider === "google" && !isGoogleOAuthEnabled) {
       toast.error("Google login is not enabled yet.");
+      return;
+    }
+
+    if (provider === "github" && !isGithubOAuthEnabled) {
+      toast.error("GitHub login is not enabled yet.");
       return;
     }
 
@@ -50,24 +62,23 @@ export function OAuthButtons({ disabled }: { disabled?: boolean }) {
       toast.error("OAuth did not return a redirect URL.");
       setActiveProvider(null);
     } catch (error) {
-      toast.error(getAuthErrorMessage(error instanceof Error ? error.message : "Unable to start sign-in."));
+      toast.error(getClientAuthErrorMessage(error, "Unable to start sign-in."));
       setActiveProvider(null);
     }
   }
 
   return (
     <div className="grid gap-3">
-      <button
-        type="button"
-        className="btn-ghost w-full justify-center py-3"
-        onClick={() => signIn("google")}
-        disabled={disabled || !isGoogleOAuthEnabled || activeProvider !== null}
-      >
-        {activeProvider === "google" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <GoogleIcon />}
-        Continue with Google
-      </button>
-      {!isGoogleOAuthEnabled ? (
-        <p className="text-center text-xs text-amber-200">Google login is not enabled yet.</p>
+      {isGoogleOAuthEnabled ? (
+        <button
+          type="button"
+          className="btn-ghost w-full justify-center py-3"
+          onClick={() => signIn("google")}
+          disabled={disabled || activeProvider !== null}
+        >
+          {activeProvider === "google" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <GoogleIcon />}
+          Continue with Google
+        </button>
       ) : null}
       {isGithubOAuthEnabled ? (
         <button type="button" className="btn-ghost w-full justify-center py-3" onClick={() => signIn("github")} disabled={disabled || activeProvider !== null}>
