@@ -28,6 +28,7 @@ export function LoginForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
+  const [canResendVerification, setCanResendVerification] = useState(false);
   const safeNextPath = useMemo(() => (nextPath?.startsWith("/") ? nextPath : "/dashboard"), [nextPath]);
 
   useEffect(() => {
@@ -46,6 +47,7 @@ export function LoginForm({
     const emailError = getEmailValidationError(email);
     if (emailError) {
       setFormError(emailError);
+      setCanResendVerification(false);
       toast.error(emailError);
       return;
     }
@@ -53,6 +55,7 @@ export function LoginForm({
     const passwordError = getPasswordValidationError(password);
     if (passwordError) {
       setFormError(passwordError);
+      setCanResendVerification(false);
       toast.error(passwordError);
       return;
     }
@@ -60,6 +63,7 @@ export function LoginForm({
     try {
       setIsLoading(true);
       setFormError(null);
+      setCanResendVerification(false);
       const supabase = createClient();
       const { error } = await supabase.auth.signInWithPassword({
         email: normalizeEmail(email),
@@ -69,6 +73,7 @@ export function LoginForm({
       if (error) {
         const message = getAuthErrorMessage(error);
         setFormError(message);
+        setCanResendVerification(error.message.toLowerCase().includes("email not confirmed"));
         toast.error(message);
         return;
       }
@@ -78,6 +83,42 @@ export function LoginForm({
       router.refresh();
     } catch (error) {
       const message = getClientAuthErrorMessage(error, "Unable to sign in.");
+      setFormError(message);
+      setCanResendVerification(false);
+      toast.error(message);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function resendVerification() {
+    const emailError = getEmailValidationError(email);
+    if (emailError) {
+      setFormError(emailError);
+      toast.error(emailError);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const supabase = createClient();
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: normalizeEmail(email)
+      });
+
+      if (error) {
+        const message = getAuthErrorMessage(error);
+        setFormError(message);
+        toast.error(message);
+        return;
+      }
+
+      setFormError("Verification email sent. Check your inbox, then log in again.");
+      setCanResendVerification(false);
+      toast.success("Verification email sent.");
+    } catch (error) {
+      const message = getClientAuthErrorMessage(error, "Unable to resend verification email.");
       setFormError(message);
       toast.error(message);
     } finally {
@@ -99,8 +140,13 @@ export function LoginForm({
       ) : null}
 
       {formError ? (
-        <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-100" role="alert">
-          {formError}
+        <div className="space-y-3 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-100" role="alert">
+          <p>{formError}</p>
+          {canResendVerification ? (
+            <button type="button" className="text-brand underline-offset-4 transition hover:underline" onClick={resendVerification} disabled={isLoading}>
+              Resend verification email
+            </button>
+          ) : null}
         </div>
       ) : null}
 
