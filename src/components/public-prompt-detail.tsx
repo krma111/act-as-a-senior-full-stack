@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { Flag, Heart, User } from "lucide-react";
 import { PromptActions } from "@/components/prompt-actions";
 import { reportPrompt } from "@/lib/actions";
-import { creatorSlug, getPrompt } from "@/lib/data";
+import { getPrompt } from "@/lib/data";
+import { creatorSlug } from "@/lib/slugs";
 import { hasSupabaseEnv } from "@/lib/env";
 import { createClient } from "@/lib/supabase/server";
 
@@ -117,3 +118,4 @@ export async function PublicPromptDetail({ idOrSlug, message, error }: { idOrSlu
     </main>
   );
 }
+

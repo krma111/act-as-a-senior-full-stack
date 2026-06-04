@@ -222,6 +222,9 @@ export async function incrementCopyCount(promptId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("increment_prompt_copy_count", { prompt_uuid: promptId });
   revalidatePath(`/prompts/${promptId}`);
+  revalidatePath(`/prompt/${promptId}`);
+  revalidatePath("/prompts");
+  revalidatePath("/");
   return error ? { error: error.message } : { copyCount: typeof data === "number" ? data : null };
 }
 
@@ -381,3 +384,4 @@ export async function updateProfile(formData: FormData) {
   revalidatePath("/dashboard");
   redirect(`/dashboard?message=${encodeURIComponent("Profile updated.")}`);
 }
+

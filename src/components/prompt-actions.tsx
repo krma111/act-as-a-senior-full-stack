@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Copy, ExternalLink, Heart } from "lucide-react";
+import { ExternalLink, Heart } from "lucide-react";
 import { toast } from "sonner";
-import { incrementCopyCount, toggleFavorite } from "@/lib/actions";
+import { toggleFavorite } from "@/lib/actions";
+import { CopyPromptButton } from "@/components/copy-prompt-button";
 
 export function PromptActions({
   promptId,
@@ -24,30 +25,15 @@ export function PromptActions({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3">
-        <button
-          className="btn-primary"
-          disabled={pending}
-          onClick={() =>
-            startTransition(async () => {
-              try {
-                await navigator.clipboard.writeText(promptText);
-                const result = await incrementCopyCount(promptId);
-                if ("error" in result) {
-                  toast.error(result.error);
-                  return;
-                }
-                if (typeof result.copyCount === "number") setCopyCount(result.copyCount);
-                else setCopyCount((count) => count + 1);
-                setShowCopyTargets(true);
-                toast.success("Prompt copied");
-              } catch {
-                toast.error("Your browser blocked clipboard access.");
-              }
-            })
-          }
-        >
-          <Copy className="h-4 w-4" /> Copy prompt
-        </button>
+        <CopyPromptButton
+          promptId={promptId}
+          promptText={promptText}
+          initialCopyCount={initialCopyCount}
+          onCopied={(nextCount) => {
+            if (typeof nextCount === "number") setCopyCount(nextCount);
+            setShowCopyTargets(true);
+          }}
+        />
         <button
           className="btn-ghost"
           disabled={pending}

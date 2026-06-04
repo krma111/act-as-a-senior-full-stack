@@ -1,16 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/env";
+import { creatorSlug, promptSlug, slugify } from "@/lib/slugs";
 import type { Category, Profile, Prompt, SiteSettings } from "@/lib/types";
 
 function sanitizeSearch(value: string) {
   return value.replace(/[%_{}()[\],"'\\]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
-}
-
-export function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 }
 
 function isUuid(value: string) {
@@ -53,19 +47,6 @@ function categoryFromName(name: string): Category {
     slug,
     description: null
   };
-}
-
-function displayNameForProfile(profile?: Profile | null) {
-  return profile?.full_name ?? profile?.display_name ?? profile?.email?.split("@")[0] ?? "Creator";
-}
-
-export function creatorSlug(profile?: Profile | null) {
-  return slugify(displayNameForProfile(profile)) || profile?.id || "creator";
-}
-
-export function promptSlug(prompt: Pick<Prompt, "id" | "title">) {
-  const titleSlug = slugify(prompt.title);
-  return titleSlug ? `${titleSlug}-${prompt.id}` : prompt.id;
 }
 
 export function normalizePrompt(row: PromptRow, profile?: Profile | null): Prompt {
@@ -254,3 +235,5 @@ export async function getPromptsByCreator(username: string) {
   if (error) return { creator, prompts: [] };
   return { creator, prompts: ((data ?? []) as PromptRow[]).map((row) => normalizePrompt(row, creator)) };
 }
+
+
