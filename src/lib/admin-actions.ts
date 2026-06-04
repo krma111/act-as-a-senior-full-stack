@@ -52,7 +52,7 @@ function validatePrompt(formData: FormData) {
   if (promptText.length < 10) return "Prompt text must be at least 10 characters.";
   if (!category) return "Category is required.";
   if (!aiModel) return "AI model is required.";
-  if (!imageUrl.startsWith("https://")) return "Image URL must be a valid HTTPS URL.";
+  if (imageUrl && !imageUrl.startsWith("https://")) return "Image URL must be a valid HTTPS URL.";
   return null;
 }
 
@@ -136,7 +136,7 @@ export async function updateAdminPrompt(formData: FormData) {
       description: asString(formData, "description") || null,
       prompt_text: asString(formData, "prompt_text"),
       negative_prompt: asString(formData, "negative_prompt") || null,
-      image_url: asString(formData, "image_url"),
+      image_url: asString(formData, "image_url") || null,
       category: asString(formData, "category").toLowerCase(),
       tags: tagsFrom(asString(formData, "tags")),
       ai_model: asString(formData, "ai_model"),

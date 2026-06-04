@@ -23,7 +23,7 @@ function SubmitButton() {
 }
 
 function getFileError(file: File | null) {
-  if (!file) return "Image upload is required.";
+  if (!file) return null;
   if (!file.type.startsWith("image/")) return "Upload a valid image file.";
   if (file.size > maxImageSizeBytes) return "Images must be smaller than 8 MB.";
   return null;
@@ -66,14 +66,13 @@ export function CreatorUploadForm({ message, error }: { message?: string; error?
         <div className="rounded-3xl border border-dashed border-brand/30 bg-brand/5 p-6">
           <div className="flex flex-col items-center gap-3 text-center">
             <UploadCloud className="h-8 w-8 text-brand" />
-            <p className="text-sm text-slate-300">Upload the real example image for this prompt. Maximum size: 8 MB.</p>
+            <p className="text-sm text-slate-300">Upload an optional example image for this prompt. Maximum size: 8 MB.</p>
             <input
               ref={fileInputRef}
               className="field max-w-xl"
               name="image"
               type="file"
               accept="image/*"
-              required
               onChange={() => setClientError(getFileError(fileInputRef.current?.files?.[0] ?? null))}
             />
           </div>

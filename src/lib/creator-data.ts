@@ -7,7 +7,7 @@ export type CreatorPrompt = {
   title: string;
   description: string | null;
   prompt_text: string;
-  image_url: string;
+  image_url: string | null;
   category: string;
   tags: string[];
   ai_model: string | null;

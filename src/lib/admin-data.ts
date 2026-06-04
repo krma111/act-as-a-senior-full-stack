@@ -12,7 +12,7 @@ export type AdminPrompt = {
   description: string | null;
   prompt_text: string;
   negative_prompt: string | null;
-  image_url: string;
+  image_url: string | null;
   category: string;
   tags: string[];
   ai_model: string | null;

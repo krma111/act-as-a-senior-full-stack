@@ -60,7 +60,11 @@ export default async function MyPromptsPage({
           {prompts.map((prompt) => (
             <article key={prompt.id} className="card-surface overflow-hidden rounded-[28px]">
               <div className="relative aspect-[4/3] bg-black/40">
-                <Image src={prompt.image_url} alt={prompt.title} fill className="object-cover" sizes="(min-width:1280px) 33vw, (min-width:768px) 50vw, 100vw" />
+                {prompt.image_url ? (
+                  <Image src={prompt.image_url} alt={prompt.title} fill className="object-cover" sizes="(min-width:1280px) 33vw, (min-width:768px) 50vw, 100vw" />
+                ) : (
+                  <div className="grid h-full place-items-center bg-brand/5 px-6 text-center text-sm text-slate-400">Text-only prompt</div>
+                )}
                 <div className="absolute left-3 top-3 flex flex-wrap gap-2">
                   <span className={`rounded-full border px-3 py-1 text-xs font-bold uppercase ${statusClass(prompt.status)}`}>{prompt.status}</span>
                   <span className="rounded-full border border-white/10 bg-black/60 px-3 py-1 text-xs text-white">{prompt.aspect_ratio}</span>

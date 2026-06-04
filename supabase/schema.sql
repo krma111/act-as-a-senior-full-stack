@@ -27,7 +27,7 @@ create table public.prompts (
   title text not null check (char_length(title) between 3 and 120),
   prompt_text text not null check (char_length(prompt_text) >= 10),
   negative_prompt text,
-  image_url text not null,
+  image_url text,
   ai_model text not null,
   visibility public.prompt_visibility not null default 'public',
   tags text[] not null default '{}',

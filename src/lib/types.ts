@@ -26,7 +26,7 @@ export type Prompt = {
   description?: string | null;
   prompt_text: string;
   negative_prompt: string | null;
-  image_url: string;
+  image_url: string | null;
   ai_model: string;
   visibility?: "public" | "private";
   aspect_ratio?: string | null;

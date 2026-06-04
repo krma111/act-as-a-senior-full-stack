@@ -2,9 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { hasSupabaseEnv, hasSupabaseServiceRoleKey } from "@/lib/env";
+import { hasSupabaseEnv } from "@/lib/env";
 
 const maxImageSizeBytes = 8 * 1024 * 1024;
 
@@ -56,7 +55,6 @@ function validatePromptForm(formData: FormData) {
 
 async function requireCreatorSession(nextPath: string) {
   if (!hasSupabaseEnv) redirectWithMessage("/login", "error", "Supabase is not configured.");
-  if (!hasSupabaseServiceRoleKey) redirectWithMessage(nextPath, "error", "Server upload service is not configured.");
 
   const supabase = await createClient();
   const {
@@ -67,39 +65,11 @@ async function requireCreatorSession(nextPath: string) {
   return { supabase, user };
 }
 
-async function ensureCreatorProfile(
-  user: { id: string; email?: string | null; user_metadata?: Record<string, unknown> },
-  errorPath: string
-) {
-  const admin = createAdminClient();
-  const fullName =
-    typeof user.user_metadata?.full_name === "string"
-      ? user.user_metadata.full_name
-      : typeof user.user_metadata?.display_name === "string"
-      ? user.user_metadata.display_name
-      : user.email?.split("@")[0] ?? "Creator";
-
-  const { error } = await admin.from("profiles").upsert(
-    {
-      id: user.id,
-      email: user.email ?? null,
-      display_name: fullName,
-      role: "creator",
-      updated_at: new Date().toISOString()
-    },
-    { onConflict: "id" }
-  );
-
-  if (error) {
-    redirectWithMessage(errorPath, "error", `Unable to prepare creator profile: ${error.message}`);
-  }
-}
-
 async function uploadPromptImage(formData: FormData, userId: string, currentImageUrl?: string | null) {
   const file = formData.get("image");
   if (!(file instanceof File) || file.size === 0) {
     if (currentImageUrl) return currentImageUrl;
-    redirectWithMessage("/dashboard/upload", "error", "Image upload is required.");
+    return null;
   }
 
   if (!file.type.startsWith("image/")) redirectWithMessage("/dashboard/upload", "error", "Upload a valid image file.");
@@ -120,7 +90,7 @@ async function uploadPromptImage(formData: FormData, userId: string, currentImag
   return data.publicUrl;
 }
 
-function promptPayload(formData: FormData, userId: string, imageUrl: string) {
+function promptPayload(formData: FormData, userId: string, imageUrl: string | null) {
   return {
     user_id: userId,
     title: asString(formData, "title"),
@@ -144,12 +114,9 @@ export async function createCreatorPrompt(formData: FormData) {
   const validationError = validatePromptForm(formData);
   if (validationError) redirectWithMessage("/dashboard/upload", "error", validationError);
 
-  const { user } = await requireCreatorSession("/dashboard/upload");
-  await ensureCreatorProfile(user, "/dashboard/upload");
+  const { supabase, user } = await requireCreatorSession("/dashboard/upload");
   const imageUrl = await uploadPromptImage(formData, user.id);
-
-  const admin = createAdminClient();
-  const { error } = await admin.from("prompts").insert(promptPayload(formData, user.id, imageUrl));
+  const { error } = await supabase.from("prompts").insert(promptPayload(formData, user.id, imageUrl));
 
   if (error) redirectWithMessage("/dashboard/upload", "error", error.message);
 
@@ -165,11 +132,9 @@ export async function updateCreatorPrompt(formData: FormData) {
   const validationError = validatePromptForm(formData);
   if (validationError) redirectWithMessage(`/dashboard/edit/${id}`, "error", validationError);
 
-  const { user } = await requireCreatorSession(`/dashboard/edit/${id}`);
-  await ensureCreatorProfile(user, `/dashboard/edit/${id}`);
+  const { supabase, user } = await requireCreatorSession(`/dashboard/edit/${id}`);
 
-  const admin = createAdminClient();
-  const { data: current, error: currentError } = await admin
+  const { data: current, error: currentError } = await supabase
     .from("prompts")
     .select("id,user_id,image_url")
     .eq("id", id)
@@ -179,7 +144,7 @@ export async function updateCreatorPrompt(formData: FormData) {
   if (currentError || !current) redirectWithMessage("/dashboard/my-prompts", "error", "Prompt not found.");
 
   const imageUrl = await uploadPromptImage(formData, user.id, current.image_url);
-  const { error } = await admin
+  const { error } = await supabase
     .from("prompts")
     .update(promptPayload(formData, user.id, imageUrl))
     .eq("id", id)

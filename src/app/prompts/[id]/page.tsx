@@ -43,14 +43,20 @@ export default async function PromptDetail({
     <main className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8">
       <div className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
         <div className="relative aspect-[4/3]">
-          <Image
-            src={prompt.image_url}
-            alt={prompt.title}
-            fill
-            className="object-cover"
-            priority
-            sizes="(min-width:1024px) 55vw, 100vw"
-          />
+          {prompt.image_url ? (
+            <Image
+              src={prompt.image_url}
+              alt={prompt.title}
+              fill
+              className="object-cover"
+              priority
+              sizes="(min-width:1024px) 55vw, 100vw"
+            />
+          ) : (
+            <div className="grid h-full place-items-center bg-brand/5 px-6 text-center text-sm font-semibold text-slate-400">
+              Text-only prompt
+            </div>
+          )}
         </div>
       </div>
       <section className="space-y-6">

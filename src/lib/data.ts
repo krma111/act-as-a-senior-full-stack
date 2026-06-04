@@ -11,7 +11,7 @@ type PromptRow = {
   id: string;
   user_id: string;
   title: string;
-  image_url: string;
+  image_url: string | null;
   prompt_text: string;
   negative_prompt: string | null;
   ai_model: string | null;
