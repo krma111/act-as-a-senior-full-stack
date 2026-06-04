@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { CheckCircle2, Trash2, XCircle } from "lucide-react";
 import { AdminSubmitButton } from "@/components/admin-action-button";
+import { AdminFlashToast } from "@/components/admin-flash-toast";
 import { approvePack, deletePack, rejectPack } from "@/lib/admin-actions";
 import { getAdminPacks } from "@/lib/admin-data";
 
@@ -29,6 +30,7 @@ export default async function AdminPacksPage({ searchParams }: { searchParams: P
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <AdminFlashToast message={params.message} error={params.error ?? error ?? undefined} />
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand">Admin console</p>
@@ -62,8 +64,8 @@ export default async function AdminPacksPage({ searchParams }: { searchParams: P
             <article key={pack.id} className="card-surface overflow-hidden rounded-[28px]">
               <div className="grid gap-0 lg:grid-cols-[260px_1fr]">
                 <div className="relative aspect-[4/3] bg-black/40 lg:aspect-auto">
-                  {pack.cover_image_url ? (
-                    <Image src={pack.cover_image_url} alt={pack.title} fill className="object-cover" sizes="(min-width:1024px) 260px, 100vw" />
+                  {pack.cover_image ? (
+                    <Image src={pack.cover_image} alt={pack.title} fill className="object-cover" sizes="(min-width:1024px) 260px, 100vw" />
                   ) : (
                     <div className="grid h-full min-h-[200px] place-items-center bg-brand/5 px-6 text-center text-sm text-slate-400">No cover image</div>
                   )}
@@ -73,15 +75,14 @@ export default async function AdminPacksPage({ searchParams }: { searchParams: P
                     <div>
                       <div className="flex flex-wrap gap-2">
                         <span className={"rounded-full border px-3 py-1 text-xs font-bold uppercase " + statusClass(pack.status)}>{pack.status}</span>
-                        {pack.featured ? <span className="rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-xs font-bold text-brand">Featured</span> : null}
                       </div>
                       <h2 className="mt-3 text-xl font-bold text-white">{pack.title}</h2>
                       <p className="mt-1 text-sm text-slate-400">{pack.creator_name ?? "Creator"} {pack.creator_email ? "(" + pack.creator_email + ")" : ""} - {formatDate(pack.created_at)}</p>
                       <p className="mt-3 text-sm leading-6 text-slate-300">{pack.description || "No description."}</p>
                     </div>
                     <div className="grid min-w-[220px] grid-cols-2 gap-2 text-xs text-slate-400">
-                      <span className="rounded-xl bg-white/[0.04] p-2">Prompts: {pack.prompt_count}</span>
-                      <span className="rounded-xl bg-white/[0.04] p-2">Price: {pack.currency} {pack.price}</span>
+                      <span className="rounded-xl bg-white/[0.04] p-2">Prompts: {pack.total_prompts}</span>
+                      <span className="rounded-xl bg-white/[0.04] p-2">{pack.is_paid ? `Paid: ${pack.price}` : "Free"}</span>
                     </div>
                   </div>
 
@@ -90,7 +91,7 @@ export default async function AdminPacksPage({ searchParams }: { searchParams: P
                   <div className="flex flex-wrap gap-2">
                     <form action={approvePack}>
                       <input type="hidden" name="id" value={pack.id} />
-                      <input type="hidden" name="prompt_count" value={pack.prompt_count} />
+                      <input type="hidden" name="prompt_count" value={pack.total_prompts} />
                       <input type="hidden" name="price" value={pack.price} />
                       <AdminSubmitButton pendingText="Approving..."><CheckCircle2 className="h-4 w-4" /> Approve</AdminSubmitButton>
                     </form>

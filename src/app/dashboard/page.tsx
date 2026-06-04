@@ -78,6 +78,7 @@ export default async function DashboardPage({
               <Sparkles className="h-4 w-4" />
               Upload prompt
             </Link>
+            <Link href="/dashboard/packs/new" className="btn-ghost">Create pack</Link>
             <Link href="/dashboard/my-prompts" className="btn-ghost">My prompts</Link>
             <Link href="/" className="btn-ghost">Explore vault</Link>
           </div>

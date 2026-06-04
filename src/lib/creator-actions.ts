@@ -21,6 +21,11 @@ function redirectWithMessage(path: string, type: "message" | "error", message: s
   redirect(`${path}?${type}=${encodeURIComponent(message)}`);
 }
 
+function isMissingTableError(message?: string | null) {
+  const value = (message ?? "").toLowerCase();
+  return value.includes("schema cache") || value.includes("could not find the table") || value.includes("does not exist");
+}
+
 function tagsFrom(value: string) {
   return value
     .split(",")
@@ -156,4 +161,44 @@ export async function updateCreatorPrompt(formData: FormData) {
   revalidatePath("/dashboard/my-prompts");
   revalidatePath(`/dashboard/edit/${id}`);
   redirectWithMessage("/dashboard/my-prompts", "message", "Prompt updated and moved back to pending review.");
+}
+
+export async function createCreatorPack(formData: FormData) {
+  const title = asString(formData, "title");
+  const description = asString(formData, "description");
+  const coverImage = asString(formData, "cover_image");
+  const price = Number(asString(formData, "price") || "0");
+  const totalPrompts = Number(asString(formData, "total_prompts") || "0");
+
+  if (title.length < 3 || title.length > 160) redirectWithMessage("/dashboard/packs/new", "error", "Pack title must be between 3 and 160 characters.");
+  if (description.length > 500) redirectWithMessage("/dashboard/packs/new", "error", "Description must be 500 characters or less.");
+  if (coverImage && !coverImage.startsWith("https://")) redirectWithMessage("/dashboard/packs/new", "error", "Cover image must be a valid HTTPS URL.");
+  if (!Number.isFinite(price) || price < 0) redirectWithMessage("/dashboard/packs/new", "error", "Price must be zero or higher.");
+  if (!Number.isInteger(totalPrompts) || totalPrompts < 0) redirectWithMessage("/dashboard/packs/new", "error", "Total prompts must be zero or higher.");
+  if (price > 0 && totalPrompts < 5) redirectWithMessage("/dashboard/packs/new", "error", "Paid packs must include at least 5 prompts.");
+
+  const { supabase, user } = await requireCreatorSession("/dashboard/packs/new");
+  const { error } = await supabase.from("prompt_packs").insert({
+    creator_id: user.id,
+    creator_name: user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? "Creator",
+    title,
+    description: description || null,
+    cover_image: coverImage || null,
+    price,
+    is_paid: price > 0,
+    status: "pending",
+    total_prompts: totalPrompts,
+    updated_at: new Date().toISOString()
+  });
+
+  if (error) {
+    const message = isMissingTableError(error.message)
+      ? "Prompt pack database is not initialized yet. Apply the latest Supabase migration and try again."
+      : error.message;
+    redirectWithMessage("/dashboard/packs/new", "error", message);
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/admin/packs");
+  redirectWithMessage("/dashboard", "message", "Pack submitted for admin review.");
 }

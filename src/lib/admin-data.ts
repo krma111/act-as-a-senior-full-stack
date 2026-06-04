@@ -52,20 +52,20 @@ type PromptRow = Omit<AdminPrompt, "creator_email" | "creator_name"> & { price?:
 
 export type AdminPack = {
   id: string;
-  creator_id: string;
+  creator_id: string | null;
+  creator_name_row: string | null;
   title: string;
   description: string | null;
-  cover_image_url: string | null;
+  cover_image: string | null;
   price: number;
-  currency: string;
+  is_paid: boolean;
   status: PackStatus;
   rejection_reason: string | null;
-  featured: boolean;
+  total_prompts: number;
   created_at: string;
   updated_at: string;
   creator_email: string | null;
   creator_name: string | null;
-  prompt_count: number;
 };
 
 export type AdminPaymentRequest = {
@@ -84,8 +84,27 @@ export type AdminPaymentRequest = {
   pack_name: string | null;
 };
 
-type PackRow = Omit<AdminPack, "creator_email" | "creator_name" | "prompt_count">;
+type PackRow = {
+  id: string;
+  creator_id: string | null;
+  creator_name: string | null;
+  title: string;
+  description: string | null;
+  cover_image: string | null;
+  price: number | null;
+  is_paid: boolean | null;
+  status: string | null;
+  rejection_reason?: string | null;
+  total_prompts: number | null;
+  created_at: string;
+  updated_at: string;
+};
 type PaymentRow = Omit<AdminPaymentRequest, "user_email" | "pack_name">;
+
+function isMissingTableError(message?: string | null) {
+  const value = (message ?? "").toLowerCase();
+  return value.includes("schema cache") || value.includes("could not find the table") || value.includes("does not exist");
+}
 
 function sanitizeStatus(value?: string): AdminPromptStatus | "all" {
   if (value === "pending" || value === "approved" || value === "rejected") return value;
@@ -152,9 +171,9 @@ export async function getAdminStats() {
     totalCreators: totalCreators.count ?? 0,
     totalCopies: (promptCopies.data ?? []).reduce((total, row) => total + (Number(row.copy_count) || 0), 0),
     totalSaves: savedPrompts.count ?? 0,
-    totalPaidPacks: paidPacks.count ?? 0,
-    totalPaymentRequests: paymentRequests.count ?? 0,
-    totalApprovedSales: approvedSales.count ?? 0
+    totalPaidPacks: paidPacks.error ? 0 : paidPacks.count ?? 0,
+    totalPaymentRequests: paymentRequests.error ? 0 : paymentRequests.count ?? 0,
+    totalApprovedSales: approvedSales.error ? 0 : approvedSales.count ?? 0
   } satisfies AdminStats;
 }
 
@@ -276,38 +295,32 @@ export async function getAdminPacks(status?: string) {
   const activeStatus = sanitizeStatus(status);
   let query = supabase
     .from("prompt_packs")
-    .select("id,creator_id,title,description,cover_image_url,price,currency,status,rejection_reason,featured,created_at,updated_at")
+    .select("id,creator_id,creator_name,title,description,cover_image,price,is_paid,status,rejection_reason,total_prompts,created_at,updated_at")
     .order("created_at", { ascending: false });
 
   if (activeStatus !== "all") query = query.eq("status", activeStatus);
 
   const { data, error } = await query;
+  if (isMissingTableError(error?.message)) return { packs: [] as AdminPack[], error: null, activeStatus };
   if (error) return { packs: [] as AdminPack[], error: error.message, activeStatus };
 
   const rows = (data ?? []) as PackRow[];
-  const creatorIds = Array.from(new Set(rows.map((pack) => pack.creator_id).filter(Boolean)));
-  const packIds = rows.map((pack) => pack.id);
+  const creatorIds = Array.from(new Set(rows.map((pack) => pack.creator_id).filter((id): id is string => Boolean(id))));
   const profiles = await profilesByIds(supabase, creatorIds);
-  const promptCounts = new Map<string, number>();
-
-  if (packIds.length) {
-    const { data: links } = await supabase.from("pack_prompts").select("pack_id").in("pack_id", packIds);
-    for (const link of (links ?? []) as Array<{ pack_id: string }>) {
-      promptCounts.set(link.pack_id, (promptCounts.get(link.pack_id) ?? 0) + 1);
-    }
-  }
 
   return {
     packs: rows.map((pack) => {
-      const creator = profiles.get(pack.creator_id);
+      const creator = pack.creator_id ? profiles.get(pack.creator_id) : null;
       return {
         ...pack,
         price: Number(pack.price) || 0,
-        currency: pack.currency || "USD",
+        is_paid: Boolean(pack.is_paid),
         status: normalizePackStatus(pack.status),
+        rejection_reason: pack.rejection_reason ?? null,
         creator_email: creator?.email ?? null,
-        creator_name: creator?.full_name ?? creator?.display_name ?? null,
-        prompt_count: promptCounts.get(pack.id) ?? 0
+        creator_name: pack.creator_name ?? creator?.full_name ?? creator?.display_name ?? null,
+        creator_name_row: pack.creator_name ?? null,
+        total_prompts: Number(pack.total_prompts) || 0
       };
     }),
     error: null,
