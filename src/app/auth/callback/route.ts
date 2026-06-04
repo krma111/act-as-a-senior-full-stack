@@ -10,8 +10,6 @@ type CookieToSet = {
 };
 
 function callbackHashHandler(origin: string, next: string) {
-  const supabaseUrl = getSupabaseUrl();
-  const supabaseAnonKey = getSupabaseAnonKey();
   const dashboardUrl = `${origin}${next}`;
   const resetPasswordUrl = `${origin}/reset-password`;
   const loginUrl = `${origin}/login`;
@@ -37,8 +35,6 @@ function callbackHashHandler(origin: string, next: string) {
       <p>Please wait while PromptVault finishes your secure sign-in.</p>
     </main>
     <script type="module">
-      import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
       const loginUrl = ${JSON.stringify(loginUrl)};
       const dashboardUrl = ${JSON.stringify(dashboardUrl)};
       const resetPasswordUrl = ${JSON.stringify(resetPasswordUrl)};
@@ -46,23 +42,13 @@ function callbackHashHandler(origin: string, next: string) {
       const accessToken = params.get("access_token");
       const refreshToken = params.get("refresh_token");
       const error = params.get("error_description") || params.get("error");
-      const successUrl = params.get("type") === "recovery" ? resetPasswordUrl : dashboardUrl;
+      const hash = window.location.hash || "";
+      const successUrl = params.get("type") === "recovery" ? resetPasswordUrl + hash : dashboardUrl + hash;
 
       if (error) {
         window.location.replace(loginUrl + "?error=" + encodeURIComponent(error));
       } else if (accessToken && refreshToken) {
-        const supabase = createClient(${JSON.stringify(supabaseUrl)}, ${JSON.stringify(supabaseAnonKey)}, {
-          auth: { persistSession: true, detectSessionInUrl: false }
-        });
-        const result = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken
-        });
-        if (result.error) {
-          window.location.replace(loginUrl + "?error=" + encodeURIComponent(result.error.message));
-        } else {
-          window.location.replace(successUrl);
-        }
+        window.location.replace(successUrl);
       } else {
         window.location.replace(loginUrl + "?error=" + encodeURIComponent("Missing authentication code. Please try again."));
       }

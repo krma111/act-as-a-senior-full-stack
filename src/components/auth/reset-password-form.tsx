@@ -45,9 +45,31 @@ export function ResetPasswordForm({
 
     async function prepareRecoverySession() {
       try {
+        const query = new URLSearchParams(window.location.search);
+        const code = query.get("code");
         const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
         const accessToken = hash.get("access_token");
         const refreshToken = hash.get("refresh_token");
+        const hashError = hash.get("error_description") || hash.get("error");
+
+        if (hashError) {
+          const message = decodeURIComponent(hashError);
+          setFormError(message);
+          toast.error(message);
+          return;
+        }
+
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+          if (error) {
+            const message = getAuthErrorMessage(error);
+            setFormError(message);
+            toast.error(message);
+          } else {
+            window.history.replaceState({}, "", window.location.pathname);
+          }
+        }
 
         if (accessToken && refreshToken) {
           const { error } = await supabase.auth.setSession({

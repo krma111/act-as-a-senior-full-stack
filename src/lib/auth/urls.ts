@@ -22,5 +22,5 @@ export function getAuthCallbackUrl(nextPath = "/dashboard") {
 }
 
 export function getPasswordResetRedirectUrl() {
-  return getAuthCallbackUrl("/reset-password");
+  return `${getBaseUrl()}/reset-password`;
 }
