@@ -57,7 +57,7 @@ export function PromptActions({
               if ("error" in result) toast.error(result.error);
               else {
                 setFavorited(result.favorited);
-                toast.success(result.favorited ? "Saved to favorites" : "Removed from favorites");
+                toast.success(result.favorited ? "Saved to vault" : "Removed from vault");
               }
             })
           }

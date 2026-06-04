@@ -195,21 +195,20 @@ export async function toggleFavorite(promptId: string) {
   if (!user) return { error: "Login required" };
 
   const { data: existing } = await supabase
-    .from("favorites")
+    .from("saved_prompts")
     .select("id")
     .eq("prompt_id", promptId)
     .eq("user_id", user.id)
     .maybeSingle();
 
   if (existing) {
-    await supabase.from("favorites").delete().eq("id", existing.id);
-    await supabase.rpc("sync_prompt_like_count", { prompt_uuid: promptId });
+    const { error } = await supabase.from("saved_prompts").delete().eq("id", existing.id);
+    if (error) return { error: error.message };
     revalidatePath(`/prompts/${promptId}`);
     return { favorited: false };
   }
 
-  const { error } = await supabase.from("favorites").insert({ prompt_id: promptId, user_id: user.id });
-  await supabase.rpc("sync_prompt_like_count", { prompt_uuid: promptId });
+  const { error } = await supabase.from("saved_prompts").insert({ prompt_id: promptId, user_id: user.id });
   revalidatePath(`/prompts/${promptId}`);
   return error ? { error: error.message } : { favorited: true };
 }
@@ -239,11 +238,16 @@ export async function reportPrompt(formData: FormData) {
   if (!user) redirect("/login");
 
   const promptId = asString(formData, "prompt_id");
-  await supabase.from("reports").insert({
+  const { error } = await supabase.from("reports").insert({
     prompt_id: promptId,
     user_id: user.id,
     reason: asString(formData, "reason") || "Reported by user"
   });
+
+  if (error) {
+    redirect(`/prompts/${promptId}?error=${encodeURIComponent(error.message)}`);
+  }
+
   revalidatePath(`/prompts/${promptId}`);
   redirect(`/prompts/${promptId}?message=${encodeURIComponent("Thanks. The report was sent to the admins.")}`);
 }
@@ -258,7 +262,7 @@ export async function assertAdmin() {
     data: { user }
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const { data } = await supabase.from("users").select("role,email").eq("id", user.id).single();
+  const { data } = await supabase.from("profiles").select("role,email").eq("id", user.id).single();
   if (data?.role !== "admin" || data.email?.toLowerCase() !== adminEmail.toLowerCase()) redirect("/");
   return user;
 }
@@ -327,7 +331,7 @@ export async function adminTogglePromptFlag(formData: FormData) {
   const id = asString(formData, "id");
   const field = asString(formData, "field");
   const value = asString(formData, "value") === "true";
-  if (field !== "featured" && field !== "hidden") return;
+  if (field !== "featured") return;
   await admin.from("prompts").update({ [field]: value }).eq("id", id);
   revalidatePath("/");
   revalidatePath("/admin");
@@ -349,7 +353,7 @@ export async function adminHideReportedPrompt(formData: FormData) {
   const admin = createAdminClient();
   const promptId = asString(formData, "prompt_id");
   const reportId = asString(formData, "report_id");
-  await admin.from("prompts").update({ hidden: true }).eq("id", promptId);
+  await admin.from("prompts").update({ status: "rejected", rejection_reason: "Rejected after user report." }).eq("id", promptId);
   if (reportId) await admin.from("reports").update({ status: "resolved" }).eq("id", reportId);
   revalidatePath("/");
   revalidatePath("/admin");
@@ -371,7 +375,7 @@ export async function updateProfile(formData: FormData) {
     redirectWithMessage("/dashboard", "Display name must be between 2 and 80 characters.");
   }
 
-  const { error } = await supabase.from("users").update({ display_name: displayName }).eq("id", user.id);
+  const { error } = await supabase.from("profiles").update({ display_name: displayName }).eq("id", user.id);
   if (error) redirectWithMessage("/dashboard", error.message);
 
   revalidatePath("/dashboard");

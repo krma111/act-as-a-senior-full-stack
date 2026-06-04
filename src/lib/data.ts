@@ -43,7 +43,7 @@ function categoryFromName(name: string): Category {
   };
 }
 
-function normalizePrompt(row: PromptRow): Prompt {
+export function normalizePrompt(row: PromptRow): Prompt {
   const category = categoryFromName(row.category || "Uncategorized");
 
   return {

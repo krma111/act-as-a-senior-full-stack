@@ -14,7 +14,7 @@ export default async function PromptDetail({
   searchParams
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ message?: string }>;
+  searchParams: Promise<{ message?: string; error?: string }>;
 }) {
   const { id } = await params;
   const query = await searchParams;
@@ -28,13 +28,16 @@ export default async function PromptDetail({
   const { data: viewer } = isPreviewMode && previewUser
     ? { data: { role: previewUser.role } }
     : user && supabase
-    ? await supabase.from("users").select("role").eq("id", user.id).single()
+    ? await supabase.from("profiles").select("role").eq("id", user.id).single()
     : { data: null };
   const { data: favorite } = isPreviewMode && user
     ? { data: null }
     : user && supabase
-    ? await supabase.from("favorites").select("id").eq("prompt_id", id).eq("user_id", user.id).maybeSingle()
+    ? await supabase.from("saved_prompts").select("id").eq("prompt_id", id).eq("user_id", user.id).maybeSingle()
     : { data: null };
+  const { count: saveCount } = supabase
+    ? await supabase.from("saved_prompts").select("id", { count: "exact", head: true }).eq("prompt_id", id)
+    : { count: prompt.like_count };
   if (!prompt) notFound();
   const canView = (!prompt.hidden || viewer?.role === "admin") && (prompt.visibility === "public" || prompt.user_id === user?.id || viewer?.role === "admin");
   if (!canView) notFound();
@@ -80,9 +83,9 @@ export default async function PromptDetail({
           )}
         </div>
 
-        {query.message && (
-          <p className="rounded-lg border border-brand/30 bg-brand/10 p-3 text-sm text-brand">
-            {query.message}
+        {(query.message || query.error) && (
+          <p className={`rounded-lg border p-3 text-sm ${query.error ? "border-red-500/30 bg-red-500/10 text-red-100" : "border-brand/30 bg-brand/10 text-brand"}`}>
+            {query.error ?? query.message}
           </p>
         )}
 
@@ -91,7 +94,7 @@ export default async function PromptDetail({
         <div className="grid gap-3">
           <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4">
             <p className="text-sm text-slate-400">Favorites</p>
-            <p className="mt-1 flex items-center gap-2 text-2xl font-bold"><Heart className="h-5 w-5 text-brand" /> {prompt.like_count}</p>
+            <p className="mt-1 flex items-center gap-2 text-2xl font-bold"><Heart className="h-5 w-5 text-brand" /> {saveCount ?? prompt.like_count}</p>
           </div>
         </div>
 
