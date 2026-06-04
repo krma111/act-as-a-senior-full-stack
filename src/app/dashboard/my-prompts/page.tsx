@@ -29,7 +29,7 @@ export default async function MyPromptsPage({
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand">Creator library</p>
           <h1 className="mt-2 text-3xl font-black text-white">My prompts</h1>
@@ -42,8 +42,13 @@ export default async function MyPromptsPage({
       </div>
 
       {(params.message || params.error || error) && (
-        <div className={`mb-6 rounded-2xl border p-4 text-sm ${params.error || error ? "border-red-500/30 bg-red-500/10 text-red-100" : "border-brand/30 bg-brand/10 text-brand"}`}>
-          {params.error ?? error ?? params.message}
+        <div className={`mb-6 flex flex-col gap-3 rounded-2xl border p-4 text-sm sm:flex-row sm:items-center sm:justify-between ${params.error || error ? "border-red-500/30 bg-red-500/10 text-red-100" : "border-brand/30 bg-brand/10 text-brand"}`}>
+          <span>{params.error ?? error ?? params.message}</span>
+          {!params.error && !error ? (
+            <Link href="/" className="btn-ghost shrink-0 py-2">
+              Back to Website
+            </Link>
+          ) : null}
         </div>
       )}
 
@@ -65,7 +70,7 @@ export default async function MyPromptsPage({
                 ) : (
                   <div className="grid h-full place-items-center bg-brand/5 px-6 text-center text-sm text-slate-400">Text-only prompt</div>
                 )}
-                <div className="absolute left-3 top-3 flex flex-wrap gap-2">
+                <div className="absolute inset-x-3 top-3 flex flex-wrap gap-2">
                   <span className={`rounded-full border px-3 py-1 text-xs font-bold uppercase ${statusClass(prompt.status)}`}>{prompt.status}</span>
                   <span className="rounded-full border border-white/10 bg-black/60 px-3 py-1 text-xs text-white">{prompt.aspect_ratio}</span>
                 </div>

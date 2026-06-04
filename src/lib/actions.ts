@@ -217,12 +217,13 @@ export async function toggleFavorite(promptId: string) {
 export async function incrementCopyCount(promptId: string) {
   if (isPreviewMode) {
     revalidatePath(`/prompts/${promptId}`);
-    return;
+    return { copyCount: null };
   }
 
   const supabase = await createClient();
-  await supabase.rpc("increment_prompt_copy_count", { prompt_uuid: promptId });
+  const { data, error } = await supabase.rpc("increment_prompt_copy_count", { prompt_uuid: promptId });
   revalidatePath(`/prompts/${promptId}`);
+  return error ? { error: error.message } : { copyCount: typeof data === "number" ? data : null };
 }
 
 export async function reportPrompt(formData: FormData) {

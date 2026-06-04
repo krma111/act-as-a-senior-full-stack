@@ -13,6 +13,7 @@ function callbackHashHandler(origin: string, next: string) {
   const supabaseUrl = getSupabaseUrl();
   const supabaseAnonKey = getSupabaseAnonKey();
   const dashboardUrl = `${origin}${next}`;
+  const resetPasswordUrl = `${origin}/reset-password`;
   const loginUrl = `${origin}/login`;
 
   return new NextResponse(
@@ -40,10 +41,12 @@ function callbackHashHandler(origin: string, next: string) {
 
       const loginUrl = ${JSON.stringify(loginUrl)};
       const dashboardUrl = ${JSON.stringify(dashboardUrl)};
+      const resetPasswordUrl = ${JSON.stringify(resetPasswordUrl)};
       const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
       const accessToken = params.get("access_token");
       const refreshToken = params.get("refresh_token");
       const error = params.get("error_description") || params.get("error");
+      const successUrl = params.get("type") === "recovery" ? resetPasswordUrl : dashboardUrl;
 
       if (error) {
         window.location.replace(loginUrl + "?error=" + encodeURIComponent(error));
@@ -58,7 +61,7 @@ function callbackHashHandler(origin: string, next: string) {
         if (result.error) {
           window.location.replace(loginUrl + "?error=" + encodeURIComponent(result.error.message));
         } else {
-          window.location.replace(dashboardUrl);
+          window.location.replace(successUrl);
         }
       } else {
         window.location.replace(loginUrl + "?error=" + encodeURIComponent("Missing authentication code. Please try again."));
@@ -79,7 +82,9 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const authError = searchParams.get("error_description") ?? searchParams.get("error");
   const code = searchParams.get("code");
-  const next = searchParams.get("next")?.startsWith("/") ? searchParams.get("next")! : "/dashboard";
+  const type = searchParams.get("type");
+  const defaultNext = type === "recovery" ? "/reset-password" : "/dashboard";
+  const next = searchParams.get("next")?.startsWith("/") ? searchParams.get("next")! : defaultNext;
   const redirectOrigin = origin || siteUrl;
 
   if (authError) {

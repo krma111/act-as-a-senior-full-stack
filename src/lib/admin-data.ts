@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getAuthSessionState } from "@/lib/auth/session";
-import type { Profile } from "@/lib/types";
+import type { Profile, SiteSettings } from "@/lib/types";
 
 export type AdminPromptStatus = "pending" | "approved" | "rejected";
 export type AdminRole = "admin" | "creator" | "user";
@@ -100,6 +100,21 @@ export async function getAdminStats() {
     totalCopies: (promptCopies.data ?? []).reduce((total, row) => total + (Number(row.copy_count) || 0), 0),
     totalSaves: savedPrompts.count ?? 0
   } satisfies AdminStats;
+}
+
+export async function getAdminSiteSettings() {
+  const { supabase } = await requireAdmin("/admin");
+  const { data } = await supabase.from("site_settings").select("*").eq("id", 1).maybeSingle();
+
+  return {
+    id: 1,
+    website_name: data?.website_name ?? "PromptVault",
+    logo_text: data?.logo_text ?? "PromptVault",
+    hero_headline: data?.hero_headline ?? "Discover and share powerful AI image prompts",
+    hero_subheadline: data?.hero_subheadline ?? "Browse battle-tested prompts, save favorites, and publish your best image generations.",
+    footer_text: data?.footer_text ?? "Copyright 2026 PromptVault. All rights reserved.",
+    admin_email: ""
+  } satisfies SiteSettings;
 }
 
 export async function getAdminPrompts(status?: string) {

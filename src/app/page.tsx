@@ -2,9 +2,7 @@ import Link from "next/link";
 import { ArrowRight, CheckCircle2, Sparkles, TrendingUp, UploadCloud } from "lucide-react";
 import { PromptGrid } from "@/components/prompt-grid";
 import { SearchFilters } from "@/components/search-filters";
-import { StyleRemixGrid } from "@/components/style-remix-grid";
 import { getCategories, getPrompts, getSiteSettings } from "@/lib/data";
-import { styleExamples } from "@/lib/style-examples";
 
 export default async function Home({
   searchParams
@@ -95,8 +93,6 @@ export default async function Home({
         </div>
         <PromptGrid prompts={featured} empty="No featured prompts match this search yet." />
       </section>
-
-      <StyleRemixGrid examples={styleExamples} />
 
       <section className="section-shell mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
         <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">

@@ -86,16 +86,12 @@ export default async function PromptDetail({
           </p>
         )}
 
-        <PromptActions promptId={prompt.id} promptText={prompt.prompt_text} initialFavorited={Boolean(favorite)} />
+        <PromptActions promptId={prompt.id} promptText={prompt.prompt_text} initialCopyCount={prompt.copy_count} initialFavorited={Boolean(favorite)} />
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3">
           <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4">
             <p className="text-sm text-slate-400">Favorites</p>
             <p className="mt-1 flex items-center gap-2 text-2xl font-bold"><Heart className="h-5 w-5 text-brand" /> {prompt.like_count}</p>
-          </div>
-          <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4">
-            <p className="text-sm text-slate-400">Copies</p>
-            <p className="mt-1 text-2xl font-bold">{prompt.copy_count}</p>
           </div>
         </div>
 

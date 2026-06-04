@@ -176,3 +176,23 @@ export async function updateUserRole(formData: FormData) {
   revalidatePath("/admin/users");
   redirectWithMessage("/admin/users", "message", "User role updated.");
 }
+
+export async function updateSiteSettings(formData: FormData) {
+  const { supabase } = await requireAdmin("/admin");
+  const payload = {
+    id: 1,
+    website_name: asString(formData, "website_name") || "PromptVault",
+    logo_text: asString(formData, "logo_text") || "PromptVault",
+    hero_headline: asString(formData, "hero_headline") || "Discover and share powerful AI image prompts",
+    hero_subheadline: asString(formData, "hero_subheadline") || "Browse battle-tested prompts, save favorites, and publish your best image generations.",
+    footer_text: asString(formData, "footer_text") || "Copyright 2026 PromptVault. All rights reserved.",
+    updated_at: new Date().toISOString()
+  };
+
+  const { error } = await supabase.from("site_settings").upsert(payload, { onConflict: "id" });
+
+  if (error) redirectWithMessage("/admin", "error", error.message);
+  revalidatePath("/");
+  revalidatePath("/admin");
+  redirectWithMessage("/admin", "message", "Site content updated.");
+}

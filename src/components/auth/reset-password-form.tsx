@@ -23,6 +23,8 @@ export function ResetPasswordForm({
 }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(authEnabled);
+  const [hasSession, setHasSession] = useState(hasRecoverySession);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
@@ -32,6 +34,63 @@ export function ResetPasswordForm({
     if (initialError) toast.error(initialError);
   }, [initialError, initialMessage]);
 
+  useEffect(() => {
+    if (!authEnabled) {
+      setIsCheckingSession(false);
+      return;
+    }
+
+    let active = true;
+    const supabase = createClient();
+
+    async function prepareRecoverySession() {
+      try {
+        const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+        const accessToken = hash.get("access_token");
+        const refreshToken = hash.get("refresh_token");
+
+        if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+
+          if (error) {
+            setFormError(getAuthErrorMessage(error));
+            toast.error(getAuthErrorMessage(error));
+          } else {
+            window.history.replaceState({}, "", window.location.pathname);
+          }
+        }
+
+        const {
+          data: { session }
+        } = await supabase.auth.getSession();
+
+        if (active) setHasSession(Boolean(session));
+      } catch (error) {
+        const message = getClientAuthErrorMessage(error, "Unable to validate recovery link.");
+        if (active) setFormError(message);
+        toast.error(message);
+      } finally {
+        if (active) setIsCheckingSession(false);
+      }
+    }
+
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" || session) setHasSession(Boolean(session));
+    });
+
+    prepareRecoverySession();
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, [authEnabled]);
+
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!authEnabled) {
@@ -40,7 +99,7 @@ export function ResetPasswordForm({
       return;
     }
 
-    if (!hasRecoverySession) {
+    if (!hasSession) {
       setFormError("Your recovery session is missing or expired.");
       toast.error("Your recovery session is missing or expired.");
       return;
@@ -84,7 +143,17 @@ export function ResetPasswordForm({
     }
   }
 
-  if (!hasRecoverySession) {
+  if (isCheckingSession) {
+    return (
+      <div className="space-y-5">
+        <h2 className="text-2xl font-bold text-white">Checking recovery link</h2>
+        <p className="text-sm text-slate-400">Please wait while PromptVault verifies your password reset session.</p>
+        <LoaderCircle className="h-5 w-5 animate-spin text-brand" />
+      </div>
+    );
+  }
+
+  if (!hasSession) {
     return (
       <div className="space-y-5">
         <div>

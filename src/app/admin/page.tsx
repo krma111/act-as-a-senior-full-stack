@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ShieldCheck, Sparkles, UsersRound } from "lucide-react";
-import { getAdminStats, requireAdmin } from "@/lib/admin-data";
+import { updateSiteSettings } from "@/lib/admin-actions";
+import { getAdminSiteSettings, getAdminStats, requireAdmin } from "@/lib/admin-data";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ export default async function AdminPage({
 }) {
   const params = await searchParams;
   await requireAdmin("/admin");
-  const stats = await getAdminStats();
+  const [stats, settings] = await Promise.all([getAdminStats(), getAdminSiteSettings()]);
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
@@ -72,6 +73,39 @@ export default async function AdminPage({
           <h2 className="mt-4 text-2xl font-bold text-white">Manage user roles</h2>
           <p className="mt-2 text-sm text-slate-400">View real profiles and change users between user, creator, and admin roles.</p>
         </Link>
+      </section>
+
+      <section className="card-surface mt-8 rounded-[28px] p-6 sm:p-8">
+        <div className="mb-5">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand">Site content</p>
+          <h2 className="mt-2 text-2xl font-bold text-white">Edit website text</h2>
+          <p className="mt-2 text-sm text-slate-400">Update core homepage, logo, and footer wording from the admin panel.</p>
+        </div>
+        <form action={updateSiteSettings} className="grid gap-4">
+          <label className="block space-y-2">
+            <span className="label">Website name</span>
+            <input className="field" name="website_name" defaultValue={settings.website_name} required />
+          </label>
+          <label className="block space-y-2">
+            <span className="label">Logo text</span>
+            <input className="field" name="logo_text" defaultValue={settings.logo_text} required />
+          </label>
+          <label className="block space-y-2">
+            <span className="label">Hero headline</span>
+            <input className="field" name="hero_headline" defaultValue={settings.hero_headline} required />
+          </label>
+          <label className="block space-y-2">
+            <span className="label">Hero subheadline</span>
+            <textarea className="field min-h-24" name="hero_subheadline" defaultValue={settings.hero_subheadline} required />
+          </label>
+          <label className="block space-y-2">
+            <span className="label">Footer text</span>
+            <input className="field" name="footer_text" defaultValue={settings.footer_text} required />
+          </label>
+          <div>
+            <button className="btn-primary">Save site text</button>
+          </div>
+        </form>
       </section>
     </main>
   );

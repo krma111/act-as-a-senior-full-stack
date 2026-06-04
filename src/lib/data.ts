@@ -76,13 +76,16 @@ function normalizePrompt(row: PromptRow): Prompt {
 export async function getSiteSettings(): Promise<SiteSettings> {
   if (isPreviewMode) return demoSettings;
 
+  const supabase = await createClient();
+  const { data } = await supabase.from("site_settings").select("*").eq("id", 1).maybeSingle();
+
   return {
     id: 1,
-    website_name: "PromptVault",
-    logo_text: "PromptVault",
-    hero_headline: "Discover and share powerful AI image prompts",
-    hero_subheadline: "Browse battle-tested prompts, save favorites, and publish your best image generations.",
-    footer_text: "Copyright 2026 PromptVault. All rights reserved.",
+    website_name: data?.website_name ?? "PromptVault",
+    logo_text: data?.logo_text ?? "PromptVault",
+    hero_headline: data?.hero_headline ?? "Discover and share powerful AI image prompts",
+    hero_subheadline: data?.hero_subheadline ?? "Browse battle-tested prompts, save favorites, and publish your best image generations.",
+    footer_text: data?.footer_text ?? "Copyright 2026 PromptVault. All rights reserved.",
     admin_email: ""
   };
 }
