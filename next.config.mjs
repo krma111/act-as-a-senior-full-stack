@@ -19,6 +19,14 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "picsum.photos"
+      },
+      {
+        protocol: "https",
+        hostname: "*.googleusercontent.com"
+      },
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com"
       }
     ]
   }

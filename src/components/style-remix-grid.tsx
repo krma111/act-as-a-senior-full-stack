@@ -23,6 +23,7 @@ function StyleCard({ example }: { example: StyleExample }) {
   return (
     <article className="card-surface overflow-hidden rounded-2xl transition duration-500 hover:-translate-y-2 hover:border-brand/50">
       <div className="relative aspect-[4/5] overflow-hidden bg-slate-900">
+        {/* eslint-disable-next-line @next/next/no-img-element -- Supports blob: URLs from local upload previews. */}
         <img src={uploaded?.url ?? example.imageUrl} alt={example.title} className="h-full w-full object-cover transition duration-700 hover:scale-110" loading="lazy" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(57,255,20,0.22),transparent_58%)]" />
         <div className="absolute left-3 top-3 rounded-md bg-slate-950/75 px-2 py-1 text-xs font-semibold text-white backdrop-blur">

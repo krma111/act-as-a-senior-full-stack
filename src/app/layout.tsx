@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { Toaster } from "sonner";
 import { LogOut, ShieldCheck } from "lucide-react";
 import "./globals.css";
@@ -59,7 +60,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     <Link href="/dashboard" className="btn-ghost">Dashboard</Link>
                     <div className="hidden items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 md:flex">
                       {avatarUrl ? (
-                        <img src={avatarUrl} alt={displayName} className="h-8 w-8 rounded-xl border border-white/10 object-cover" />
+                        <Image src={avatarUrl} alt={displayName} width={32} height={32} className="h-8 w-8 rounded-xl border border-white/10 object-cover" />
                       ) : (
                         <span className="grid h-8 w-8 place-items-center rounded-xl bg-brand/10 text-xs font-bold text-brand">
                           {getInitials(displayName)}
