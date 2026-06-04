@@ -1,49 +1,74 @@
 import { createClient } from "@/lib/supabase/server";
-import { demoCategories, demoPrompts, demoSettings } from "@/lib/demo-data";
-import { isPreviewMode } from "@/lib/env";
-import type { Category, Prompt, SiteSettings } from "@/lib/types";
+import { hasSupabaseEnv } from "@/lib/env";
+import type { Category, Profile, Prompt, SiteSettings } from "@/lib/types";
 
 function sanitizeSearch(value: string) {
   return value.replace(/[%_{}()[\],"'\\]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
 }
 
-type PromptRow = {
-  id: string;
-  user_id: string;
-  title: string;
-  image_url: string | null;
-  prompt_text: string;
-  negative_prompt: string | null;
-  ai_model: string | null;
-  aspect_ratio: string | null;
-  category: string;
-  tags: string[];
-  status: "pending" | "approved" | "rejected";
-  rejection_reason: string | null;
-  copy_count: number;
-  view_count: number;
-  featured: boolean;
-  created_at: string;
-  updated_at: string;
-};
-
-function slugify(value: string) {
+export function slugify(value: string) {
   return value
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function uuidFromSlug(value: string) {
+  const match = value.match(/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+  return match?.[0] ?? null;
+}
+
+type PromptRow = {
+  id: string;
+  user_id: string;
+  title: string;
+  description?: string | null;
+  image_url: string | null;
+  prompt_text: string;
+  negative_prompt: string | null;
+  ai_model: string | null;
+  aspect_ratio: string | null;
+  category: string;
+  tags: string[] | null;
+  status: "pending" | "approved" | "rejected";
+  rejection_reason: string | null;
+  copy_count: number | null;
+  view_count: number | null;
+  featured: boolean | null;
+  reference_required?: boolean | null;
+  difficulty?: "beginner" | "intermediate" | "advanced" | null;
+  created_at: string;
+  updated_at: string;
+};
+
 function categoryFromName(name: string): Category {
+  const slug = slugify(name) || "uncategorized";
   return {
-    id: slugify(name) || "uncategorized",
+    id: slug,
     name,
-    slug: slugify(name) || "uncategorized",
+    slug,
     description: null
   };
 }
 
-export function normalizePrompt(row: PromptRow): Prompt {
+function displayNameForProfile(profile?: Profile | null) {
+  return profile?.full_name ?? profile?.display_name ?? profile?.email?.split("@")[0] ?? "Creator";
+}
+
+export function creatorSlug(profile?: Profile | null) {
+  return slugify(displayNameForProfile(profile)) || profile?.id || "creator";
+}
+
+export function promptSlug(prompt: Pick<Prompt, "id" | "title">) {
+  const titleSlug = slugify(prompt.title);
+  return titleSlug ? `${titleSlug}-${prompt.id}` : prompt.id;
+}
+
+export function normalizePrompt(row: PromptRow, profile?: Profile | null): Prompt {
   const category = categoryFromName(row.category || "Uncategorized");
 
   return {
@@ -51,30 +76,62 @@ export function normalizePrompt(row: PromptRow): Prompt {
     user_id: row.user_id,
     category_id: null,
     title: row.title,
+    description: row.description ?? null,
     prompt_text: row.prompt_text,
     negative_prompt: row.negative_prompt,
     image_url: row.image_url,
     ai_model: row.ai_model ?? "Image model",
-    visibility: row.status === "approved" ? "public" : "private",
+    visibility: "public",
     aspect_ratio: row.aspect_ratio,
     category: category.name,
+    reference_required: Boolean(row.reference_required),
+    difficulty: row.difficulty ?? "intermediate",
     tags: Array.isArray(row.tags) ? row.tags : [],
     copy_count: row.copy_count ?? 0,
     like_count: 0,
     view_count: row.view_count ?? 0,
     featured: Boolean(row.featured),
-    hidden: row.status !== "approved",
-    status: row.status,
-    rejection_reason: row.rejection_reason,
+    hidden: false,
+    status: "approved",
+    rejection_reason: null,
     created_at: row.created_at,
     updated_at: row.updated_at,
     categories: category,
-    users: null
+    users: profile ?? null
   };
 }
 
+async function profilesByIds(userIds: string[]) {
+  const map = new Map<string, Profile>();
+  if (!hasSupabaseEnv || !userIds.length) return map;
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("profiles")
+    .select("id,email,full_name,display_name,avatar_url,role,created_at,updated_at")
+    .in("id", Array.from(new Set(userIds)));
+
+  for (const profile of (data ?? []) as Profile[]) map.set(profile.id, profile);
+  return map;
+}
+
+async function attachProfiles(rows: PromptRow[]) {
+  const profiles = await profilesByIds(rows.map((row) => row.user_id).filter(Boolean));
+  return rows.map((row) => normalizePrompt(row, profiles.get(row.user_id) ?? null));
+}
+
 export async function getSiteSettings(): Promise<SiteSettings> {
-  if (isPreviewMode) return demoSettings;
+  if (!hasSupabaseEnv) {
+    return {
+      id: 1,
+      website_name: "PromptVault",
+      logo_text: "PromptVault",
+      hero_headline: "Discover and share powerful image prompts",
+      hero_subheadline: "Browse approved creator prompts from the live vault.",
+      footer_text: "Copyright 2026 PromptVault. All rights reserved.",
+      admin_email: ""
+    };
+  }
 
   const supabase = await createClient();
   const { data } = await supabase.from("site_settings").select("*").eq("id", 1).maybeSingle();
@@ -83,15 +140,15 @@ export async function getSiteSettings(): Promise<SiteSettings> {
     id: 1,
     website_name: data?.website_name ?? "PromptVault",
     logo_text: data?.logo_text ?? "PromptVault",
-    hero_headline: data?.hero_headline ?? "Discover and share powerful AI image prompts",
-    hero_subheadline: data?.hero_subheadline ?? "Browse battle-tested prompts, save favorites, and publish your best image generations.",
+    hero_headline: data?.hero_headline ?? "Discover and share powerful image prompts",
+    hero_subheadline: data?.hero_subheadline ?? "Browse approved creator prompts from the live vault.",
     footer_text: data?.footer_text ?? "Copyright 2026 PromptVault. All rights reserved.",
     admin_email: ""
   };
 }
 
 export async function getCategories(): Promise<Category[]> {
-  if (isPreviewMode) return demoCategories;
+  if (!hasSupabaseEnv) return [];
 
   const supabase = await createClient();
   const { data } = await supabase.from("prompts").select("category").eq("status", "approved").order("category");
@@ -107,36 +164,13 @@ export async function getPrompts(options?: {
   limit?: number;
   order?: "latest" | "trending";
 }) {
-  if (isPreviewMode) {
-    const search = options?.search ? sanitizeSearch(options.search).toLowerCase() : "";
-    const filtered = demoPrompts
-      .filter((prompt) => !options?.category || prompt.categories?.slug === options.category)
-      .filter((prompt) => !options?.aspectRatio || prompt.aspect_ratio === options.aspectRatio)
-      .filter((prompt) => !options?.featured || prompt.featured)
-      .filter((prompt) => {
-        if (!search) return true;
-        return [
-          prompt.title,
-          prompt.prompt_text,
-          prompt.ai_model,
-          prompt.categories?.name ?? "",
-          prompt.tags.join(" ")
-        ].join(" ").toLowerCase().includes(search);
-      })
-      .sort((a, b) => {
-        if (options?.order === "trending") return b.like_count + b.copy_count - (a.like_count + a.copy_count);
-        return Date.parse(b.created_at) - Date.parse(a.created_at);
-      });
-
-    return filtered.slice(0, options?.limit ?? 12);
-  }
+  if (!hasSupabaseEnv) return [];
 
   const search = options?.search ? sanitizeSearch(options.search) : "";
-
   const supabase = await createClient();
   let query = supabase
     .from("prompts")
-    .select("*")
+    .select("id,user_id,title,description,image_url,prompt_text,negative_prompt,ai_model,aspect_ratio,category,tags,status,rejection_reason,copy_count,view_count,featured,reference_required,difficulty,created_at,updated_at")
     .eq("status", "approved");
 
   if (options?.category) query = query.ilike("category", options.category.replace(/-/g, " "));
@@ -159,18 +193,64 @@ export async function getPrompts(options?: {
       ? query.order("copy_count", { ascending: false }).order("view_count", { ascending: false })
       : query.order("created_at", { ascending: false });
 
-  const { data } = await query.limit(options?.limit ?? 12);
-  return ((data ?? []) as PromptRow[]).map(normalizePrompt);
+  const { data, error } = await query.limit(options?.limit ?? 12);
+  if (error) return [];
+  return attachProfiles((data ?? []) as PromptRow[]);
 }
 
-export async function getPrompt(id: string) {
-  if (isPreviewMode) return demoPrompts.find((prompt) => prompt.id === id) ?? null;
+export async function getPrompt(idOrSlug: string) {
+  if (!hasSupabaseEnv) return null;
 
   const supabase = await createClient();
-  const { data } = await supabase
+  const id = uuidFromSlug(idOrSlug) ?? (isUuid(idOrSlug) ? idOrSlug : null);
+
+  if (id) {
+    const { data, error } = await supabase
+      .from("prompts")
+      .select("id,user_id,title,description,image_url,prompt_text,negative_prompt,ai_model,aspect_ratio,category,tags,status,rejection_reason,copy_count,view_count,featured,reference_required,difficulty,created_at,updated_at")
+      .eq("id", id)
+      .eq("status", "approved")
+      .maybeSingle();
+    if (error || !data) return null;
+    const profiles = await profilesByIds([data.user_id]);
+    return normalizePrompt(data as PromptRow, profiles.get(data.user_id) ?? null);
+  }
+
+  const { data, error } = await supabase
     .from("prompts")
-    .select("*")
-    .eq("id", id)
-    .single();
-  return data ? normalizePrompt(data as PromptRow) : null;
+    .select("id,user_id,title,description,image_url,prompt_text,negative_prompt,ai_model,aspect_ratio,category,tags,status,rejection_reason,copy_count,view_count,featured,reference_required,difficulty,created_at,updated_at")
+    .eq("status", "approved")
+    .limit(100);
+  if (error) return null;
+  const match = ((data ?? []) as PromptRow[]).find((row) => slugify(row.title) === idOrSlug);
+  if (!match) return null;
+  const profiles = await profilesByIds([match.user_id]);
+  return normalizePrompt(match, profiles.get(match.user_id) ?? null);
+}
+
+export async function getPromptsByCreator(username: string) {
+  if (!hasSupabaseEnv) return { creator: null as Profile | null, prompts: [] as Prompt[] };
+
+  const supabase = await createClient();
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id,email,full_name,display_name,avatar_url,role,created_at,updated_at")
+    .limit(500);
+
+  const creator = ((profiles ?? []) as Profile[]).find((profile) => {
+    const candidates = [profile.id, creatorSlug(profile), slugify(profile.email?.split("@")[0] ?? "")];
+    return candidates.includes(username);
+  }) ?? null;
+
+  if (!creator) return { creator: null, prompts: [] };
+
+  const { data, error } = await supabase
+    .from("prompts")
+    .select("id,user_id,title,description,image_url,prompt_text,negative_prompt,ai_model,aspect_ratio,category,tags,status,rejection_reason,copy_count,view_count,featured,reference_required,difficulty,created_at,updated_at")
+    .eq("user_id", creator.id)
+    .eq("status", "approved")
+    .order("created_at", { ascending: false });
+
+  if (error) return { creator, prompts: [] };
+  return { creator, prompts: ((data ?? []) as PromptRow[]).map((row) => normalizePrompt(row, creator)) };
 }

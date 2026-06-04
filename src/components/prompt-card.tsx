@@ -1,15 +1,16 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Copy, Heart, Sparkles } from "lucide-react";
+import { creatorSlug, promptSlug } from "@/lib/data";
 import type { Prompt } from "@/lib/types";
 
 export function PromptCard({ prompt }: { prompt: Prompt }) {
-  const creator = prompt.users?.display_name ?? prompt.users?.email?.split("@")[0] ?? "Creator";
+  const creator = prompt.users?.display_name ?? prompt.users?.full_name ?? prompt.users?.email?.split("@")[0] ?? "Creator";
   const tags = prompt.tags.slice(0, 3);
 
   return (
     <Link
-      href={`/prompts/${prompt.id}`}
+      href={`/prompt/${promptSlug(prompt)}`}
       className="group card-surface overflow-hidden rounded-2xl transition duration-500 hover:-translate-y-2 hover:border-brand/50 hover:shadow-glow"
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-slate-950">
@@ -38,9 +39,9 @@ export function PromptCard({ prompt }: { prompt: Prompt }) {
             {prompt.ai_model}
           </span>
         </div>
-        <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs text-slate-200">
-          <span className="rounded-full bg-slate-950/70 px-2.5 py-1 backdrop-blur">by {creator}</span>
-          <span className="rounded-full bg-slate-950/70 px-2.5 py-1 backdrop-blur">{prompt.categories?.name ?? "Uncategorized"}</span>
+        <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2 text-xs text-slate-200">
+          <span className="truncate rounded-full bg-slate-950/70 px-2.5 py-1 backdrop-blur">by {creator}</span>
+          <span className="shrink-0 rounded-full bg-slate-950/70 px-2.5 py-1 backdrop-blur">{prompt.categories?.name ?? "Uncategorized"}</span>
         </div>
       </div>
       <div className="space-y-4 p-4">
@@ -73,4 +74,8 @@ export function PromptCard({ prompt }: { prompt: Prompt }) {
       </div>
     </Link>
   );
+}
+
+export function CreatorLink({ prompt }: { prompt: Prompt }) {
+  return `/creator/${prompt.users ? creatorSlug(prompt.users) : prompt.user_id}`;
 }

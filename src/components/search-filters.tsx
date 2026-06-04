@@ -12,39 +12,38 @@ export function SearchFilters({
   categories,
   activeCategory,
   activeAspectRatio,
-  search
+  search,
+  basePath = "/"
 }: {
   categories: Category[];
   activeCategory?: string;
   activeAspectRatio?: string;
   search?: string;
+  basePath?: string;
 }) {
   const router = useRouter();
   const [value, setValue] = useState(search ?? "");
 
-  const q = search ? `&q=${encodeURIComponent(search)}` : "";
-  const categoryQ = activeCategory ? `&category=${encodeURIComponent(activeCategory)}` : "";
-  const ratioQ = activeAspectRatio ? `&ratio=${encodeURIComponent(activeAspectRatio)}` : "";
-
-  function buildUrl(nextQ?: string) {
+  function buildUrl(next?: { q?: string; category?: string; ratio?: string }) {
     const params = new URLSearchParams();
-    if (nextQ?.trim()) params.set("q", nextQ.trim());
-    if (activeCategory) params.set("category", activeCategory);
-    if (activeAspectRatio) params.set("ratio", activeAspectRatio);
+    const nextQ = next?.q ?? search ?? "";
+    const nextCategory = next?.category ?? activeCategory;
+    const nextRatio = next?.ratio ?? activeAspectRatio;
+    if (nextQ.trim()) params.set("q", nextQ.trim());
+    if (nextCategory) params.set("category", nextCategory);
+    if (nextRatio) params.set("ratio", nextRatio);
     const query = params.toString();
-    return query ? `/?${query}` : "/";
+    return query ? `${basePath}?${query}` : basePath;
   }
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    router.push(buildUrl(value));
+    router.push(buildUrl({ q: value }));
   }
 
   function onChange(next: string) {
     setValue(next);
-    if (!next.trim()) {
-      router.push(buildUrl(""));
-    }
+    if (!next.trim()) router.push(buildUrl({ q: "" }));
   }
 
   return (
@@ -60,26 +59,26 @@ export function SearchFilters({
         />
       </div>
       <div className="mt-4 flex flex-wrap justify-center gap-2">
-        <Link className={`btn-ghost ${!activeCategory ? "border-brand/60 text-brand" : ""}`} href={`/?${ratioQ ? ratioQ.slice(1) : ""}${search ? `${ratioQ ? "&" : ""}q=${encodeURIComponent(search)}` : ""}`}>
+        <Link className={`btn-ghost ${!activeCategory ? "border-brand/60 text-brand" : ""}`} href={buildUrl({ category: "" })}>
           All
         </Link>
         {categories.map((category) => (
           <Link
             key={category.id}
             className={`btn-ghost ${activeCategory === category.slug ? "border-brand/60 text-brand" : ""}`}
-            href={`/?category=${category.slug}${q}${ratioQ}`}
+            href={buildUrl({ category: category.slug })}
           >
             {category.name}
           </Link>
         ))}
       </div>
       <div className="mt-3 flex flex-wrap justify-center gap-2">
-        <Link className={`btn-ghost ${!activeAspectRatio ? "border-brand/60 text-brand" : ""}`} href={`/?${search ? `q=${encodeURIComponent(search)}` : ""}${categoryQ}`}>All Ratios</Link>
+        <Link className={`btn-ghost ${!activeAspectRatio ? "border-brand/60 text-brand" : ""}`} href={buildUrl({ ratio: "" })}>All Ratios</Link>
         {aspectRatios.map((ratio) => (
           <Link
             key={ratio}
             className={`btn-ghost ${activeAspectRatio === ratio ? "border-brand/60 text-brand" : ""}`}
-            href={`/?ratio=${encodeURIComponent(ratio)}${q}${categoryQ}`}
+            href={buildUrl({ ratio })}
           >
             {ratio}
           </Link>

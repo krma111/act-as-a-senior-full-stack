@@ -26,7 +26,7 @@ export const supabaseAnonKey = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KE
 export const supabaseServiceRoleKey = cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY);
 export const hasSupabaseEnv = isUsableUrl(supabaseUrl) && isUsableSupabaseKey(supabaseAnonKey);
 export const hasSupabaseServiceRoleKey = isUsableSupabaseKey(supabaseServiceRoleKey);
-// Public read-only pages can fall back to demo content when Supabase is not configured.
+// Public read-only pages return empty states when Supabase is not configured.
 // Authentication routes must not use preview auth or fake user data.
 export const isPreviewMode = !hasSupabaseEnv;
 
