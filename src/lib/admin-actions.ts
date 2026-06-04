@@ -41,18 +41,25 @@ function cleanRole(value: string) {
   return "user";
 }
 
+function cleanMoney(value: string) {
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount >= 0 ? amount : 0;
+}
+
 function validatePrompt(formData: FormData) {
   const title = asString(formData, "title");
   const promptText = asString(formData, "prompt_text");
   const category = asString(formData, "category");
   const aiModel = asString(formData, "ai_model");
   const imageUrl = asString(formData, "image_url");
+  const price = asString(formData, "price");
 
   if (title.length < 3 || title.length > 160) return "Title must be between 3 and 160 characters.";
   if (promptText.length < 10) return "Prompt text must be at least 10 characters.";
   if (!category) return "Category is required.";
   if (!aiModel) return "AI model is required.";
   if (imageUrl && !imageUrl.startsWith("https://")) return "Image URL must be a valid HTTPS URL.";
+  if (price && cleanMoney(price) < 0) return "Price must be zero or higher.";
   return null;
 }
 
@@ -146,6 +153,7 @@ export async function updateAdminPrompt(formData: FormData) {
       status,
       rejection_reason: rejectionReason,
       featured: asBoolean(formData, "featured"),
+      price: cleanMoney(asString(formData, "price")),
       updated_at: new Date().toISOString()
     })
     .eq("id", id);
@@ -195,4 +203,102 @@ export async function updateSiteSettings(formData: FormData) {
   revalidatePath("/");
   revalidatePath("/admin");
   redirectWithMessage("/admin", "message", "Site content updated.");
+}
+
+
+export async function approvePack(formData: FormData) {
+  const { supabase } = await requireAdmin("/admin/packs");
+  const id = asString(formData, "id");
+  const promptCount = Number(asString(formData, "prompt_count"));
+  const price = Number(asString(formData, "price"));
+
+  if (!id) redirectWithMessage("/admin/packs", "error", "Pack not found.");
+  if (price > 0 && promptCount < 5) {
+    redirectWithMessage("/admin/packs", "error", "Paid packs must include at least 5 prompts before approval.");
+  }
+
+  const { error } = await supabase
+    .from("prompt_packs")
+    .update({ status: "approved", rejection_reason: null, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) redirectWithMessage("/admin/packs", "error", error.message);
+  revalidatePath("/admin");
+  revalidatePath("/admin/packs");
+  redirectWithMessage("/admin/packs", "message", "Pack approved.");
+}
+
+export async function rejectPack(formData: FormData) {
+  const { supabase } = await requireAdmin("/admin/packs");
+  const id = asString(formData, "id");
+  const reason = asString(formData, "rejection_reason") || "Rejected by admin.";
+
+  if (!id) redirectWithMessage("/admin/packs", "error", "Pack not found.");
+
+  const { error } = await supabase
+    .from("prompt_packs")
+    .update({ status: "rejected", rejection_reason: reason, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) redirectWithMessage("/admin/packs", "error", error.message);
+  revalidatePath("/admin");
+  revalidatePath("/admin/packs");
+  redirectWithMessage("/admin/packs", "message", "Pack rejected.");
+}
+
+export async function deletePack(formData: FormData) {
+  const { supabase } = await requireAdmin("/admin/packs");
+  const id = asString(formData, "id");
+  if (!id) redirectWithMessage("/admin/packs", "error", "Pack not found.");
+
+  const { error } = await supabase.from("prompt_packs").delete().eq("id", id);
+
+  if (error) redirectWithMessage("/admin/packs", "error", error.message);
+  revalidatePath("/admin");
+  revalidatePath("/admin/packs");
+  redirectWithMessage("/admin/packs", "message", "Pack deleted.");
+}
+
+export async function approvePaymentRequest(formData: FormData) {
+  const { supabase, user } = await requireAdmin("/admin/payments");
+  const id = asString(formData, "id");
+  const userId = asString(formData, "user_id");
+  const packId = asString(formData, "pack_id");
+
+  if (!id || !userId || !packId) redirectWithMessage("/admin/payments", "error", "Payment request is incomplete.");
+
+  const now = new Date().toISOString();
+  const access = await supabase.from("user_pack_access").upsert(
+    { user_id: userId, pack_id: packId, granted_by: user.id, granted_at: now, created_at: now },
+    { onConflict: "user_id,pack_id" }
+  );
+
+  if (access.error) redirectWithMessage("/admin/payments", "error", access.error.message);
+
+  const { error } = await supabase
+    .from("payment_requests")
+    .update({ status: "approved", rejection_reason: null, reviewed_by: user.id, reviewed_at: now, updated_at: now })
+    .eq("id", id);
+
+  if (error) redirectWithMessage("/admin/payments", "error", error.message);
+  revalidatePath("/admin");
+  revalidatePath("/admin/payments");
+  redirectWithMessage("/admin/payments", "message", "Payment approved and pack access granted.");
+}
+
+export async function rejectPaymentRequest(formData: FormData) {
+  const { supabase, user } = await requireAdmin("/admin/payments");
+  const id = asString(formData, "id");
+  const reason = asString(formData, "rejection_reason") || "Payment rejected by admin.";
+  if (!id) redirectWithMessage("/admin/payments", "error", "Payment request not found.");
+
+  const { error } = await supabase
+    .from("payment_requests")
+    .update({ status: "rejected", rejection_reason: reason, reviewed_by: user.id, reviewed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) redirectWithMessage("/admin/payments", "error", error.message);
+  revalidatePath("/admin");
+  revalidatePath("/admin/payments");
+  redirectWithMessage("/admin/payments", "message", "Payment request rejected.");
 }

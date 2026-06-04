@@ -106,7 +106,7 @@ export default async function AdminEditPromptPage({
           </label>
         </div>
 
-        <div className="grid gap-5 md:grid-cols-3">
+        <div className="grid gap-5 md:grid-cols-4">
           <label className="block space-y-2">
             <span className="label">Difficulty</span>
             <select className="field" name="difficulty" required defaultValue={prompt.difficulty}>
@@ -126,6 +126,10 @@ export default async function AdminEditPromptPage({
           <label className="block space-y-2">
             <span className="label">Tags</span>
             <input className="field" name="tags" defaultValue={prompt.tags.join(", ")} />
+          </label>
+          <label className="block space-y-2">
+            <span className="label">Price</span>
+            <input className="field" name="price" type="number" min="0" step="0.01" defaultValue={prompt.price ?? 0} />
           </label>
         </div>
 

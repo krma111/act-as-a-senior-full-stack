@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ShieldCheck, Sparkles, UsersRound } from "lucide-react";
+import { Boxes, CreditCard, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
 import { updateSiteSettings } from "@/lib/admin-actions";
 import { getAdminSiteSettings, getAdminStats, requireAdmin } from "@/lib/admin-data";
 
@@ -41,6 +41,14 @@ export default async function AdminPage({
               <UsersRound className="h-4 w-4" />
               Manage users
             </Link>
+            <Link href="/admin/packs" className="btn-ghost">
+              <Boxes className="h-4 w-4" />
+              Packs
+            </Link>
+            <Link href="/admin/payments" className="btn-ghost">
+              <CreditCard className="h-4 w-4" />
+              Payments
+            </Link>
           </div>
         </div>
 
@@ -58,8 +66,12 @@ export default async function AdminPage({
         <StatCard label="Rejected" value={stats.rejectedPrompts} />
         <StatCard label="Featured" value={stats.featuredPrompts} />
         <StatCard label="Users" value={stats.totalUsers} />
+        <StatCard label="Creators" value={stats.totalCreators} />
         <StatCard label="Copies" value={stats.totalCopies} />
         <StatCard label="Saves" value={stats.totalSaves} />
+        <StatCard label="Paid packs" value={stats.totalPaidPacks} />
+        <StatCard label="Payment requests" value={stats.totalPaymentRequests} />
+        <StatCard label="Approved sales" value={stats.totalApprovedSales} />
       </section>
 
       <section className="mt-8 grid gap-5 lg:grid-cols-2">
@@ -72,6 +84,16 @@ export default async function AdminPage({
           <UsersRound className="h-8 w-8 text-brand" />
           <h2 className="mt-4 text-2xl font-bold text-white">Manage user roles</h2>
           <p className="mt-2 text-sm text-slate-400">View real profiles and change users between user, creator, and admin roles.</p>
+        </Link>
+        <Link href="/admin/packs?status=pending" className="card-surface group rounded-[28px] p-6 transition hover:border-brand/40">
+          <Boxes className="h-8 w-8 text-brand" />
+          <h2 className="mt-4 text-2xl font-bold text-white">Review prompt packs</h2>
+          <p className="mt-2 text-sm text-slate-400">Approve or reject creator packs. Paid packs must include at least 5 prompts.</p>
+        </Link>
+        <Link href="/admin/payments?status=pending" className="card-surface group rounded-[28px] p-6 transition hover:border-brand/40">
+          <CreditCard className="h-8 w-8 text-brand" />
+          <h2 className="mt-4 text-2xl font-bold text-white">Approve payments</h2>
+          <p className="mt-2 text-sm text-slate-400">Review manual payment requests and grant paid pack access.</p>
         </Link>
       </section>
 

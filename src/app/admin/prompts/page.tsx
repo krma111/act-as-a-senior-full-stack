@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { CheckCircle2, Edit3, Star, Trash2, XCircle } from "lucide-react";
+import { AdminSubmitButton } from "@/components/admin-action-button";
 import { approvePrompt, deletePrompt, rejectPrompt, toggleFeaturedPrompt } from "@/lib/admin-actions";
 import { getAdminPrompts } from "@/lib/admin-data";
 
@@ -110,19 +111,19 @@ export default async function AdminPromptsPage({
                   <div className="flex flex-wrap gap-2">
                     <form action={approvePrompt}>
                       <input type="hidden" name="id" value={prompt.id} />
-                      <button className="btn-ghost">
+                      <AdminSubmitButton pendingText="Approving...">
                         <CheckCircle2 className="h-4 w-4" />
                         Approve
-                      </button>
+                      </AdminSubmitButton>
                     </form>
 
                     <form action={toggleFeaturedPrompt}>
                       <input type="hidden" name="id" value={prompt.id} />
                       <input type="hidden" name="featured" value={String(!prompt.featured)} />
-                      <button className="btn-ghost">
+                      <AdminSubmitButton pendingText="Saving...">
                         <Star className="h-4 w-4" />
                         {prompt.featured ? "Unfeature" : "Feature"}
-                      </button>
+                      </AdminSubmitButton>
                     </form>
 
                     <Link href={`/admin/prompts/${prompt.id}/edit`} className="btn-ghost">
@@ -132,20 +133,20 @@ export default async function AdminPromptsPage({
 
                     <form action={deletePrompt}>
                       <input type="hidden" name="id" value={prompt.id} />
-                      <button className="btn-ghost text-red-200">
+                      <AdminSubmitButton className="btn-ghost text-red-200" pendingText="Deleting..." confirm="Delete this prompt permanently?">
                         <Trash2 className="h-4 w-4" />
                         Delete
-                      </button>
+                      </AdminSubmitButton>
                     </form>
                   </div>
 
                   <form action={rejectPrompt} className="grid gap-2 border-t border-white/10 pt-4 md:grid-cols-[1fr_auto]">
                     <input type="hidden" name="id" value={prompt.id} />
                     <input className="field" name="rejection_reason" placeholder="Rejection reason shown to creator" />
-                    <button className="btn-ghost text-red-100">
+                    <AdminSubmitButton className="btn-ghost text-red-100" pendingText="Rejecting...">
                       <XCircle className="h-4 w-4" />
                       Reject
-                    </button>
+                    </AdminSubmitButton>
                   </form>
                 </div>
               </div>

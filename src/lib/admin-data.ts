@@ -4,6 +4,8 @@ import type { Profile, SiteSettings } from "@/lib/types";
 
 export type AdminPromptStatus = "pending" | "approved" | "rejected";
 export type AdminRole = "admin" | "creator" | "user";
+export type PackStatus = "pending" | "approved" | "rejected";
+export type PaymentStatus = "pending" | "approved" | "rejected";
 
 export type AdminPrompt = {
   id: string;
@@ -23,6 +25,7 @@ export type AdminPrompt = {
   rejection_reason: string | null;
   copy_count: number;
   view_count: number;
+  price: number | null;
   featured: boolean;
   created_at: string;
   updated_at: string;
@@ -37,11 +40,52 @@ export type AdminStats = {
   rejectedPrompts: number;
   featuredPrompts: number;
   totalUsers: number;
+  totalCreators: number;
   totalCopies: number;
   totalSaves: number;
+  totalPaidPacks: number;
+  totalPaymentRequests: number;
+  totalApprovedSales: number;
 };
 
-type PromptRow = Omit<AdminPrompt, "creator_email" | "creator_name">;
+type PromptRow = Omit<AdminPrompt, "creator_email" | "creator_name"> & { price?: number | null };
+
+export type AdminPack = {
+  id: string;
+  creator_id: string;
+  title: string;
+  description: string | null;
+  cover_image_url: string | null;
+  price: number;
+  currency: string;
+  status: PackStatus;
+  rejection_reason: string | null;
+  featured: boolean;
+  created_at: string;
+  updated_at: string;
+  creator_email: string | null;
+  creator_name: string | null;
+  prompt_count: number;
+};
+
+export type AdminPaymentRequest = {
+  id: string;
+  user_id: string;
+  pack_id: string;
+  amount: number;
+  currency: string;
+  whatsapp_proof_url: string | null;
+  whatsapp_proof_status: string | null;
+  status: PaymentStatus;
+  rejection_reason: string | null;
+  created_at: string;
+  updated_at: string;
+  user_email: string | null;
+  pack_name: string | null;
+};
+
+type PackRow = Omit<AdminPack, "creator_email" | "creator_name" | "prompt_count">;
+type PaymentRow = Omit<AdminPaymentRequest, "user_email" | "pack_name">;
 
 function sanitizeStatus(value?: string): AdminPromptStatus | "all" {
   if (value === "pending" || value === "approved" || value === "rejected") return value;
@@ -77,8 +121,12 @@ export async function getAdminStats() {
     rejectedPrompts,
     featuredPrompts,
     totalUsers,
+    totalCreators,
     savedPrompts,
-    promptCopies
+    promptCopies,
+    paidPacks,
+    paymentRequests,
+    approvedSales
   ] = await Promise.all([
     supabase.from("prompts").select("id", { count: "exact", head: true }),
     supabase.from("prompts").select("id", { count: "exact", head: true }).eq("status", "pending"),
@@ -86,8 +134,12 @@ export async function getAdminStats() {
     supabase.from("prompts").select("id", { count: "exact", head: true }).eq("status", "rejected"),
     supabase.from("prompts").select("id", { count: "exact", head: true }).eq("featured", true),
     supabase.from("profiles").select("id", { count: "exact", head: true }),
+    supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "creator"),
     supabase.from("saved_prompts").select("id", { count: "exact", head: true }),
-    supabase.from("prompts").select("copy_count")
+    supabase.from("prompts").select("copy_count"),
+    supabase.from("prompt_packs").select("id", { count: "exact", head: true }).gt("price", 0),
+    supabase.from("payment_requests").select("id", { count: "exact", head: true }),
+    supabase.from("payment_requests").select("id", { count: "exact", head: true }).eq("status", "approved")
   ]);
 
   return {
@@ -97,8 +149,12 @@ export async function getAdminStats() {
     rejectedPrompts: rejectedPrompts.count ?? 0,
     featuredPrompts: featuredPrompts.count ?? 0,
     totalUsers: totalUsers.count ?? 0,
+    totalCreators: totalCreators.count ?? 0,
     totalCopies: (promptCopies.data ?? []).reduce((total, row) => total + (Number(row.copy_count) || 0), 0),
-    totalSaves: savedPrompts.count ?? 0
+    totalSaves: savedPrompts.count ?? 0,
+    totalPaidPacks: paidPacks.count ?? 0,
+    totalPaymentRequests: paymentRequests.count ?? 0,
+    totalApprovedSales: approvedSales.count ?? 0
   } satisfies AdminStats;
 }
 
@@ -123,7 +179,7 @@ export async function getAdminPrompts(status?: string) {
   let query = supabase
     .from("prompts")
     .select(
-      "id,user_id,title,description,prompt_text,negative_prompt,image_url,category,tags,ai_model,aspect_ratio,reference_required,difficulty,status,rejection_reason,copy_count,view_count,featured,created_at,updated_at"
+      "id,user_id,title,description,prompt_text,negative_prompt,image_url,category,tags,ai_model,aspect_ratio,reference_required,difficulty,status,rejection_reason,copy_count,view_count,price,featured,created_at,updated_at"
     )
     .order("created_at", { ascending: false });
 
@@ -167,7 +223,7 @@ export async function getAdminPromptById(id: string) {
   const { data, error } = await supabase
     .from("prompts")
     .select(
-      "id,user_id,title,description,prompt_text,negative_prompt,image_url,category,tags,ai_model,aspect_ratio,reference_required,difficulty,status,rejection_reason,copy_count,view_count,featured,created_at,updated_at"
+      "id,user_id,title,description,prompt_text,negative_prompt,image_url,category,tags,ai_model,aspect_ratio,reference_required,difficulty,status,rejection_reason,copy_count,view_count,price,featured,created_at,updated_at"
     )
     .eq("id", id)
     .maybeSingle();
@@ -188,5 +244,112 @@ export async function getAdminUsers() {
   return {
     users: ((data ?? []) as Profile[]).map((user) => ({ ...user, role: normalizeRole(user.role) })),
     error: null
+  };
+}
+
+
+async function profilesByIds(supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"], userIds: string[]) {
+  const profilesById = new Map<string, Profile>();
+  if (!userIds.length) return profilesById;
+
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id,email,full_name,display_name,avatar_url,role,created_at,updated_at")
+    .in("id", userIds);
+
+  for (const profile of (profiles ?? []) as Profile[]) profilesById.set(profile.id, profile);
+  return profilesById;
+}
+
+function normalizePackStatus(value?: string | null): PackStatus {
+  if (value === "approved" || value === "rejected") return value;
+  return "pending";
+}
+
+function normalizePaymentStatus(value?: string | null): PaymentStatus {
+  if (value === "approved" || value === "rejected") return value;
+  return "pending";
+}
+
+export async function getAdminPacks(status?: string) {
+  const { supabase } = await requireAdmin("/admin/packs");
+  const activeStatus = sanitizeStatus(status);
+  let query = supabase
+    .from("prompt_packs")
+    .select("id,creator_id,title,description,cover_image_url,price,currency,status,rejection_reason,featured,created_at,updated_at")
+    .order("created_at", { ascending: false });
+
+  if (activeStatus !== "all") query = query.eq("status", activeStatus);
+
+  const { data, error } = await query;
+  if (error) return { packs: [] as AdminPack[], error: error.message, activeStatus };
+
+  const rows = (data ?? []) as PackRow[];
+  const creatorIds = Array.from(new Set(rows.map((pack) => pack.creator_id).filter(Boolean)));
+  const packIds = rows.map((pack) => pack.id);
+  const profiles = await profilesByIds(supabase, creatorIds);
+  const promptCounts = new Map<string, number>();
+
+  if (packIds.length) {
+    const { data: links } = await supabase.from("pack_prompts").select("pack_id").in("pack_id", packIds);
+    for (const link of (links ?? []) as Array<{ pack_id: string }>) {
+      promptCounts.set(link.pack_id, (promptCounts.get(link.pack_id) ?? 0) + 1);
+    }
+  }
+
+  return {
+    packs: rows.map((pack) => {
+      const creator = profiles.get(pack.creator_id);
+      return {
+        ...pack,
+        price: Number(pack.price) || 0,
+        currency: pack.currency || "USD",
+        status: normalizePackStatus(pack.status),
+        creator_email: creator?.email ?? null,
+        creator_name: creator?.full_name ?? creator?.display_name ?? null,
+        prompt_count: promptCounts.get(pack.id) ?? 0
+      };
+    }),
+    error: null,
+    activeStatus
+  };
+}
+
+export async function getAdminPaymentRequests(status?: string) {
+  const { supabase } = await requireAdmin("/admin/payments");
+  const activeStatus = sanitizeStatus(status);
+  let query = supabase
+    .from("payment_requests")
+    .select("id,user_id,pack_id,amount,currency,whatsapp_proof_url,whatsapp_proof_status,status,rejection_reason,created_at,updated_at")
+    .order("created_at", { ascending: false });
+
+  if (activeStatus !== "all") query = query.eq("status", activeStatus);
+
+  const { data, error } = await query;
+  if (error) return { requests: [] as AdminPaymentRequest[], error: error.message, activeStatus };
+
+  const rows = (data ?? []) as PaymentRow[];
+  const userIds = Array.from(new Set(rows.map((request) => request.user_id).filter(Boolean)));
+  const packIds = Array.from(new Set(rows.map((request) => request.pack_id).filter(Boolean)));
+  const profiles = await profilesByIds(supabase, userIds);
+  const packNames = new Map<string, string>();
+
+  if (packIds.length) {
+    const { data: packs } = await supabase.from("prompt_packs").select("id,title").in("id", packIds);
+    for (const pack of (packs ?? []) as Array<{ id: string; title: string }>) packNames.set(pack.id, pack.title);
+  }
+
+  return {
+    requests: rows.map((request) => ({
+      ...request,
+      amount: Number(request.amount) || 0,
+      currency: request.currency || "USD",
+      status: normalizePaymentStatus(request.status),
+      whatsapp_proof_status: request.whatsapp_proof_status ?? (request.whatsapp_proof_url ? "submitted" : "missing"),
+      user_email: profiles.get(request.user_id)?.email ?? null,
+      pack_name: packNames.get(request.pack_id) ?? null
+    })),
+    error: null,
+    activeStatus
   };
 }
