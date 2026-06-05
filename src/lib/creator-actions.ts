@@ -70,6 +70,16 @@ async function requireCreatorSession(nextPath: string) {
   return { supabase, user };
 }
 
+async function ensureCreatorProfile(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  errorPath: string
+) {
+  const { error } = await supabase.rpc("ensure_creator_profile");
+  if (error) {
+    redirectWithMessage(errorPath, "error", `Creator profile setup failed: ${error.message}`);
+  }
+}
+
 async function uploadPromptImage(formData: FormData, userId: string, currentImageUrl?: string | null) {
   const file = formData.get("image");
   if (!(file instanceof File) || file.size === 0) {
@@ -120,6 +130,7 @@ export async function createCreatorPrompt(formData: FormData) {
   if (validationError) redirectWithMessage("/dashboard/upload", "error", validationError);
 
   const { supabase, user } = await requireCreatorSession("/dashboard/upload");
+  await ensureCreatorProfile(supabase, "/dashboard/upload");
   const imageUrl = await uploadPromptImage(formData, user.id);
   const { error } = await supabase.from("prompts").insert(promptPayload(formData, user.id, imageUrl));
 
@@ -140,6 +151,7 @@ export async function updateCreatorPrompt(formData: FormData) {
   if (validationError) redirectWithMessage(`/dashboard/edit/${id}`, "error", validationError);
 
   const { supabase, user } = await requireCreatorSession(`/dashboard/edit/${id}`);
+  await ensureCreatorProfile(supabase, `/dashboard/edit/${id}`);
 
   const { data: current, error: currentError } = await supabase
     .from("prompts")
@@ -182,6 +194,7 @@ export async function createCreatorPack(formData: FormData) {
   if (price > 0 && totalPrompts < 5) redirectWithMessage("/dashboard/packs/new", "error", "Paid packs must include at least 5 prompts.");
 
   const { supabase, user } = await requireCreatorSession("/dashboard/packs/new");
+  await ensureCreatorProfile(supabase, "/dashboard/packs/new");
   const { error } = await supabase.from("prompt_packs").insert({
     creator_id: user.id,
     creator_name: user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? "Creator",
