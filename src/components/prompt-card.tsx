@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Heart, Sparkles } from "lucide-react";
 import { creatorSlug, promptSlug } from "@/lib/slugs";
+import { CreatorBadge } from "@/components/creator-badge";
 import { CopyPromptButton } from "@/components/copy-prompt-button";
 import type { Prompt } from "@/lib/types";
 
@@ -42,7 +43,10 @@ export function PromptCard({ prompt }: { prompt: Prompt }) {
             </span>
           </div>
           <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2 text-xs text-slate-200">
-            <span className="truncate rounded-full bg-slate-950/70 px-2.5 py-1 backdrop-blur">by {creator}</span>
+            <span className="flex min-w-0 items-center gap-1 rounded-full bg-slate-950/70 px-2.5 py-1 backdrop-blur">
+              <span className="truncate">by {creator}</span>
+              <CreatorBadge profile={prompt.users} compact />
+            </span>
             <span className="shrink-0 rounded-full bg-slate-950/70 px-2.5 py-1 backdrop-blur">{prompt.categories?.name ?? "Uncategorized"}</span>
           </div>
         </div>
@@ -65,7 +69,7 @@ export function PromptCard({ prompt }: { prompt: Prompt }) {
         )}
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3 text-xs text-slate-400">
-          <CopyPromptButton promptId={prompt.id} promptText={prompt.prompt_text} initialCopyCount={prompt.copy_count} variant="compact" />
+          <CopyPromptButton promptId={prompt.id} promptText={prompt.prompt_text} initialCopyCount={prompt.copy_count} variant="compact" showTargets />
           <span className="inline-flex items-center gap-1">
             <Heart className="h-3.5 w-3.5 text-brand" /> {prompt.like_count}
           </span>

@@ -6,7 +6,7 @@ import { getMyPromptById } from "@/lib/creator-data";
 
 const categories = ["portrait", "fashion", "product", "cinematic", "architecture", "fantasy", "social", "branding"];
 const models = ["Midjourney", "DALL-E", "Flux", "Stable Diffusion", "Leonardo", "Ideogram", "Firefly", "Other"];
-const ratios = ["1:1", "9:16", "16:9", "4:5", "3:2", "2:3"];
+const ratios = ["1:1", "9:16", "16:9", "4:5", "3:4"];
 
 export const dynamic = "force-dynamic";
 
@@ -101,15 +101,7 @@ export default async function EditCreatorPromptPage({
           </label>
         </div>
 
-        <div className="grid gap-5 md:grid-cols-2">
-          <label className="block space-y-2">
-            <span className="label">Difficulty</span>
-            <select className="field" name="difficulty" required defaultValue={prompt.difficulty}>
-              <option value="beginner">beginner</option>
-              <option value="intermediate">intermediate</option>
-              <option value="advanced">advanced</option>
-            </select>
-          </label>
+        <div className="grid gap-5">
           <label className="block space-y-2">
             <span className="label">Tags</span>
             <input className="field" name="tags" defaultValue={prompt.tags.join(", ")} />

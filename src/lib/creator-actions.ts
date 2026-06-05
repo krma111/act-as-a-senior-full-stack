@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/env";
+import { sendSubmissionReceivedEmail } from "@/lib/email";
+import { normalizePromptTags } from "@/lib/prompt-tags";
 
 const maxImageSizeBytes = 8 * 1024 * 1024;
 
@@ -27,16 +29,7 @@ function isMissingTableError(message?: string | null) {
 }
 
 function tagsFrom(value: string) {
-  return value
-    .split(",")
-    .map((tag) => tag.trim().toLowerCase().replace(/[^a-z0-9- ]/g, "").replace(/\s+/g, "-"))
-    .filter(Boolean)
-    .slice(0, 16);
-}
-
-function cleanDifficulty(value: string) {
-  if (value === "beginner" || value === "advanced") return value;
-  return "intermediate";
+  return normalizePromptTags(value);
 }
 
 function cleanAspectRatio(value: string) {
@@ -80,15 +73,15 @@ async function ensureCreatorProfile(
   }
 }
 
-async function uploadPromptImage(formData: FormData, userId: string, currentImageUrl?: string | null) {
+async function uploadPromptImage(formData: FormData, userId: string, errorPath: string, currentImageUrl?: string | null) {
   const file = formData.get("image");
   if (!(file instanceof File) || file.size === 0) {
     if (currentImageUrl) return currentImageUrl;
     return null;
   }
 
-  if (!file.type.startsWith("image/")) redirectWithMessage("/dashboard/upload", "error", "Upload a valid image file.");
-  if (file.size > maxImageSizeBytes) redirectWithMessage("/dashboard/upload", "error", "Images must be smaller than 8 MB.");
+  if (!file.type.startsWith("image/")) redirectWithMessage(errorPath, "error", "Upload a valid image file.");
+  if (file.size > maxImageSizeBytes) redirectWithMessage(errorPath, "error", "Images must be smaller than 8 MB.");
 
   const supabase = await createClient();
   const extension = (file.name.split(".").pop() ?? "png").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
@@ -99,7 +92,7 @@ async function uploadPromptImage(formData: FormData, userId: string, currentImag
     upsert: false
   });
 
-  if (error) redirectWithMessage("/dashboard/upload", "error", error.message);
+  if (error) redirectWithMessage(errorPath, "error", error.message);
 
   const { data } = supabase.storage.from("prompt-images").getPublicUrl(filePath);
   return data.publicUrl;
@@ -117,7 +110,6 @@ function promptPayload(formData: FormData, userId: string, imageUrl: string | nu
     ai_model: asString(formData, "ai_model"),
     aspect_ratio: cleanAspectRatio(asString(formData, "aspect_ratio")),
     reference_required: asBoolean(formData, "reference_required"),
-    difficulty: cleanDifficulty(asString(formData, "difficulty")),
     status: "pending",
     rejection_reason: null,
     featured: false,
@@ -131,16 +123,24 @@ export async function createCreatorPrompt(formData: FormData) {
 
   const { supabase, user } = await requireCreatorSession("/dashboard/upload");
   await ensureCreatorProfile(supabase, "/dashboard/upload");
-  const imageUrl = await uploadPromptImage(formData, user.id);
-  const { error } = await supabase.from("prompts").insert(promptPayload(formData, user.id, imageUrl));
+  const imageUrl = await uploadPromptImage(formData, user.id, "/dashboard/upload");
+  const { data, error } = await supabase
+    .from("prompts")
+    .insert(promptPayload(formData, user.id, imageUrl))
+    .select("id,title")
+    .single();
 
   if (error) redirectWithMessage("/dashboard/upload", "error", error.message);
+
+  if (user.email && data?.id) {
+    await sendSubmissionReceivedEmail(user.email, data.title, data.id, user.id);
+  }
 
   revalidatePath("/admin");
   revalidatePath("/admin/prompts");
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/my-prompts");
-  redirectWithMessage("/dashboard/my-prompts", "message", "Prompt submitted for approval.");
+  redirect("/dashboard/upload/success");
 }
 
 export async function updateCreatorPrompt(formData: FormData) {
@@ -162,7 +162,7 @@ export async function updateCreatorPrompt(formData: FormData) {
 
   if (currentError || !current) redirectWithMessage("/dashboard/my-prompts", "error", "Prompt not found.");
 
-  const imageUrl = await uploadPromptImage(formData, user.id, current.image_url);
+  const imageUrl = await uploadPromptImage(formData, user.id, `/dashboard/edit/${id}`, current.image_url);
   const { error } = await supabase
     .from("prompts")
     .update(promptPayload(formData, user.id, imageUrl))

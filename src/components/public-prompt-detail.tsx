@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Flag, Heart, User } from "lucide-react";
+import { CreatorBadge } from "@/components/creator-badge";
 import { PromptActions } from "@/components/prompt-actions";
 import { reportPrompt } from "@/lib/actions";
 import { getPrompt } from "@/lib/data";
@@ -61,6 +62,7 @@ export async function PublicPromptDetail({ idOrSlug, message, error }: { idOrSlu
           <h1 className="text-3xl font-black tracking-normal sm:text-4xl">{prompt.title}</h1>
           <Link href={creatorHref} className="mt-4 inline-flex items-center gap-2 text-sm text-slate-300 hover:text-brand">
             <User className="h-4 w-4" /> {creatorName}
+            <CreatorBadge profile={prompt.users} compact />
           </Link>
         </div>
 

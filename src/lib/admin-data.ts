@@ -22,7 +22,6 @@ export type AdminPrompt = {
   ai_model: string | null;
   aspect_ratio: string | null;
   reference_required: boolean;
-  difficulty: "beginner" | "intermediate" | "advanced";
   status: AdminPromptStatus;
   rejection_reason: string | null;
   copy_count: number;
@@ -115,6 +114,10 @@ type PaymentRow = Omit<AdminPaymentRequest, "user_email" | "pack_name">;
 
 const adminServiceError =
   "Admin database service is not configured. Add SUPABASE_SERVICE_ROLE_KEY in Vercel Production environment variables.";
+
+const profileSelect =
+  "id,email,full_name,display_name,avatar_url,role,manual_badge_override,manual_badge_type,manual_badge_assigned_by,manual_badge_assigned_at,created_at,updated_at";
+const fallbackProfileSelect = "id,email,full_name,display_name,avatar_url,role,created_at,updated_at";
 
 type AdminContext = Awaited<ReturnType<typeof getAuthSessionState>> & {
   supabase: NonNullable<Awaited<ReturnType<typeof getAuthSessionState>>["supabase"]>;
@@ -307,7 +310,7 @@ export async function getAdminPrompts(status?: string) {
   let query = supabase
     .from("prompts")
     .select(
-      "id,user_id,title,description,prompt_text,negative_prompt,image_url,category,tags,ai_model,aspect_ratio,reference_required,difficulty,status,rejection_reason,copy_count,view_count,price,featured,created_at,updated_at"
+      "id,user_id,title,description,prompt_text,negative_prompt,image_url,category,tags,ai_model,aspect_ratio,reference_required,status,rejection_reason,copy_count,view_count,price,featured,created_at,updated_at"
     )
     .order("created_at", { ascending: false });
 
@@ -334,10 +337,16 @@ export async function getAdminPrompts(status?: string) {
   const profilesById = new Map<string, Profile>();
 
   if (userIds.length) {
-    const { data: profiles } = await supabase
+    const profileResult = await supabase
       .from("profiles")
-      .select("id,email,full_name,display_name,avatar_url,role,created_at,updated_at")
+      .select(profileSelect)
       .in("id", userIds);
+    let profiles: unknown[] | null = profileResult.data;
+
+    if (profileResult.error) {
+      const fallback = await supabase.from("profiles").select(fallbackProfileSelect).in("id", userIds);
+      profiles = fallback.data as unknown[] | null;
+    }
 
     for (const profile of (profiles ?? []) as Profile[]) {
       profilesById.set(profile.id, profile);
@@ -373,7 +382,7 @@ export async function getAdminPromptById(id: string) {
   const { data, error } = await supabase
     .from("prompts")
     .select(
-      "id,user_id,title,description,prompt_text,negative_prompt,image_url,category,tags,ai_model,aspect_ratio,reference_required,difficulty,status,rejection_reason,copy_count,view_count,price,featured,created_at,updated_at"
+      "id,user_id,title,description,prompt_text,negative_prompt,image_url,category,tags,ai_model,aspect_ratio,reference_required,status,rejection_reason,copy_count,view_count,price,featured,created_at,updated_at"
     )
     .eq("id", id)
     .maybeSingle();
@@ -384,17 +393,48 @@ export async function getAdminPromptById(id: string) {
 
 export async function getAdminUsers() {
   const { supabase } = await requireAdmin("/admin/users");
-  const { data, error } = await supabase
+  const usersResult = await supabase
     .from("profiles")
-    .select("id,email,full_name,display_name,avatar_url,role,created_at,updated_at")
+    .select(profileSelect)
     .order("created_at", { ascending: false });
+  let data: unknown[] | null = usersResult.data;
+  let error = usersResult.error;
+
+  if (error) {
+    const fallback = await supabase.from("profiles").select(fallbackProfileSelect).order("created_at", { ascending: false });
+    data = fallback.data as unknown[] | null;
+    error = fallback.error;
+  }
 
   if (error) return { users: [] as Profile[], error: error.message };
 
+  const userIds = ((data ?? []) as Profile[]).map((user) => user.id);
+  const copyTotals = await creatorCopyTotals(supabase, userIds);
+
   return {
-    users: ((data ?? []) as Profile[]).map((user) => ({ ...user, role: normalizeRole(user.role) })),
+    users: ((data ?? []) as Profile[]).map((user) => ({
+      ...user,
+      role: normalizeRole(user.role),
+      copy_total: copyTotals.get(user.id)?.copy_total ?? 0,
+      prompt_count: copyTotals.get(user.id)?.prompt_count ?? 0
+    })),
     error: null
   };
+}
+
+async function creatorCopyTotals(supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"], userIds: string[]) {
+  const totals = new Map<string, { copy_total: number; prompt_count: number }>();
+  if (!userIds.length) return totals;
+
+  const { data } = await supabase.from("prompts").select("user_id,copy_count").in("user_id", userIds).eq("status", "approved");
+  for (const row of (data ?? []) as Array<{ user_id: string; copy_count: number | null }>) {
+    const current = totals.get(row.user_id) ?? { copy_total: 0, prompt_count: 0 };
+    current.copy_total += Number(row.copy_count) || 0;
+    current.prompt_count += 1;
+    totals.set(row.user_id, current);
+  }
+
+  return totals;
 }
 
 
@@ -402,10 +442,17 @@ async function profilesByIds(supabase: Awaited<ReturnType<typeof requireAdmin>>[
   const profilesById = new Map<string, Profile>();
   if (!userIds.length) return profilesById;
 
-  const { data: profiles } = await supabase
+  const profileResult = await supabase
     .from("profiles")
-    .select("id,email,full_name,display_name,avatar_url,role,created_at,updated_at")
+    .select(profileSelect)
     .in("id", userIds);
+  let profiles: unknown[] | null = profileResult.data;
+  const error = profileResult.error;
+
+  if (error) {
+    const fallback = await supabase.from("profiles").select(fallbackProfileSelect).in("id", userIds);
+    profiles = fallback.data as unknown[] | null;
+  }
 
   for (const profile of (profiles ?? []) as Profile[]) profilesById.set(profile.id, profile);
   return profilesById;

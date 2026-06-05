@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/env";
-import { creatorSlug, promptSlug, slugify } from "@/lib/slugs";
+import { creatorSlug, slugify } from "@/lib/slugs";
 import type { Category, Profile, Prompt, SiteSettings } from "@/lib/types";
 
 function sanitizeSearch(value: string) {
@@ -34,10 +34,16 @@ type PromptRow = {
   view_count: number | null;
   featured: boolean | null;
   reference_required?: boolean | null;
-  difficulty?: "beginner" | "intermediate" | "advanced" | null;
   created_at: string;
   updated_at: string;
 };
+
+const promptSelect =
+  "id,user_id,title,description,image_url,prompt_text,negative_prompt,ai_model,aspect_ratio,category,tags,status,rejection_reason,copy_count,view_count,featured,reference_required,created_at,updated_at";
+
+const profileSelect =
+  "id,email,full_name,display_name,avatar_url,role,manual_badge_override,manual_badge_type,manual_badge_assigned_by,manual_badge_assigned_at,created_at,updated_at";
+const fallbackProfileSelect = "id,email,full_name,display_name,avatar_url,role,created_at,updated_at";
 
 function categoryFromName(name: string): Category {
   const slug = slugify(name) || "uncategorized";
@@ -66,7 +72,6 @@ export function normalizePrompt(row: PromptRow, profile?: Profile | null): Promp
     aspect_ratio: row.aspect_ratio,
     category: category.name,
     reference_required: Boolean(row.reference_required),
-    difficulty: row.difficulty ?? "intermediate",
     tags: Array.isArray(row.tags) ? row.tags : [],
     copy_count: row.copy_count ?? 0,
     like_count: 0,
@@ -87,13 +92,41 @@ async function profilesByIds(userIds: string[]) {
   if (!hasSupabaseEnv || !userIds.length) return map;
 
   const supabase = await createClient();
-  const { data } = await supabase
+  const uniqueUserIds = Array.from(new Set(userIds));
+  const profileResult = await supabase
     .from("profiles")
-    .select("id,email,full_name,display_name,avatar_url,role,created_at,updated_at")
-    .in("id", Array.from(new Set(userIds)));
+    .select(profileSelect)
+    .in("id", uniqueUserIds);
+  let data: unknown[] | null = profileResult.data;
 
-  for (const profile of (data ?? []) as Profile[]) map.set(profile.id, profile);
+  if (profileResult.error) {
+    const fallback = await supabase.from("profiles").select(fallbackProfileSelect).in("id", uniqueUserIds);
+    data = fallback.data as unknown[] | null;
+  }
+
+  const copyTotals = await creatorCopyTotals(uniqueUserIds);
+
+  for (const profile of (data ?? []) as Profile[]) {
+    map.set(profile.id, {
+      ...profile,
+      copy_total: copyTotals.get(profile.id) ?? 0
+    });
+  }
   return map;
+}
+
+async function creatorCopyTotals(userIds: string[]) {
+  const totals = new Map<string, number>();
+  if (!hasSupabaseEnv || !userIds.length) return totals;
+
+  const supabase = await createClient();
+  const { data } = await supabase.from("prompts").select("user_id,copy_count").in("user_id", userIds).eq("status", "approved");
+
+  for (const row of (data ?? []) as Array<{ user_id: string; copy_count: number | null }>) {
+    totals.set(row.user_id, (totals.get(row.user_id) ?? 0) + (Number(row.copy_count) || 0));
+  }
+
+  return totals;
 }
 
 async function attachProfiles(rows: PromptRow[]) {
@@ -151,7 +184,7 @@ export async function getPrompts(options?: {
   const supabase = await createClient();
   let query = supabase
     .from("prompts")
-    .select("id,user_id,title,description,image_url,prompt_text,negative_prompt,ai_model,aspect_ratio,category,tags,status,rejection_reason,copy_count,view_count,featured,reference_required,difficulty,created_at,updated_at")
+    .select(promptSelect)
     .eq("status", "approved");
 
   if (options?.category) query = query.ilike("category", options.category.replace(/-/g, " "));
@@ -188,7 +221,7 @@ export async function getPrompt(idOrSlug: string) {
   if (id) {
     const { data, error } = await supabase
       .from("prompts")
-      .select("id,user_id,title,description,image_url,prompt_text,negative_prompt,ai_model,aspect_ratio,category,tags,status,rejection_reason,copy_count,view_count,featured,reference_required,difficulty,created_at,updated_at")
+      .select(promptSelect)
       .eq("id", id)
       .eq("status", "approved")
       .maybeSingle();
@@ -199,7 +232,7 @@ export async function getPrompt(idOrSlug: string) {
 
   const { data, error } = await supabase
     .from("prompts")
-    .select("id,user_id,title,description,image_url,prompt_text,negative_prompt,ai_model,aspect_ratio,category,tags,status,rejection_reason,copy_count,view_count,featured,reference_required,difficulty,created_at,updated_at")
+    .select(promptSelect)
     .eq("status", "approved")
     .limit(100);
   if (error) return null;
@@ -213,10 +246,16 @@ export async function getPromptsByCreator(username: string) {
   if (!hasSupabaseEnv) return { creator: null as Profile | null, prompts: [] as Prompt[] };
 
   const supabase = await createClient();
-  const { data: profiles } = await supabase
+  const profileResult = await supabase
     .from("profiles")
-    .select("id,email,full_name,display_name,avatar_url,role,created_at,updated_at")
+    .select(profileSelect)
     .limit(500);
+  let profiles: unknown[] | null = profileResult.data;
+
+  if (profileResult.error) {
+    const fallback = await supabase.from("profiles").select(fallbackProfileSelect).limit(500);
+    profiles = fallback.data as unknown[] | null;
+  }
 
   const creator = ((profiles ?? []) as Profile[]).find((profile) => {
     const candidates = [profile.id, creatorSlug(profile), slugify(profile.email?.split("@")[0] ?? "")];
@@ -227,13 +266,46 @@ export async function getPromptsByCreator(username: string) {
 
   const { data, error } = await supabase
     .from("prompts")
-    .select("id,user_id,title,description,image_url,prompt_text,negative_prompt,ai_model,aspect_ratio,category,tags,status,rejection_reason,copy_count,view_count,featured,reference_required,difficulty,created_at,updated_at")
+    .select(promptSelect)
     .eq("user_id", creator.id)
     .eq("status", "approved")
     .order("created_at", { ascending: false });
 
   if (error) return { creator, prompts: [] };
-  return { creator, prompts: ((data ?? []) as PromptRow[]).map((row) => normalizePrompt(row, creator)) };
+  const rows = (data ?? []) as PromptRow[];
+  const copyTotal = rows.reduce((total, row) => total + (Number(row.copy_count) || 0), 0);
+  const creatorWithTotals = creator ? { ...creator, copy_total: copyTotal, prompt_count: rows.length } : creator;
+  return { creator: creatorWithTotals, prompts: rows.map((row) => normalizePrompt(row, creatorWithTotals)) };
+}
+
+export async function getCreatorLeaderboard() {
+  if (!hasSupabaseEnv) return [];
+
+  const supabase = await createClient();
+  const { data: rows, error } = await supabase
+    .from("prompts")
+    .select("user_id,copy_count")
+    .eq("status", "approved");
+
+  if (error) return [];
+
+  const totals = new Map<string, { copy_total: number; prompt_count: number }>();
+  for (const row of (rows ?? []) as Array<{ user_id: string; copy_count: number | null }>) {
+    const current = totals.get(row.user_id) ?? { copy_total: 0, prompt_count: 0 };
+    current.copy_total += Number(row.copy_count) || 0;
+    current.prompt_count += 1;
+    totals.set(row.user_id, current);
+  }
+
+  const profiles = await profilesByIds(Array.from(totals.keys()));
+  return Array.from(profiles.values())
+    .map((profile) => ({
+      ...profile,
+      copy_total: totals.get(profile.id)?.copy_total ?? 0,
+      prompt_count: totals.get(profile.id)?.prompt_count ?? 0
+    }))
+    .sort((a, b) => (b.copy_total ?? 0) - (a.copy_total ?? 0))
+    .slice(0, 50);
 }
 
 

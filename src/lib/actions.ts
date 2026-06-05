@@ -216,16 +216,22 @@ export async function toggleFavorite(promptId: string) {
 export async function incrementCopyCount(promptId: string) {
   if (isPreviewMode) {
     revalidatePath(`/prompts/${promptId}`);
-    return { copyCount: null };
+    return { copyCount: null, counted: false };
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("increment_prompt_copy_count", { prompt_uuid: promptId });
+  const { data, error } = await supabase.rpc("record_prompt_copy", { prompt_uuid: promptId });
+  const row = Array.isArray(data) ? data[0] : null;
   revalidatePath(`/prompts/${promptId}`);
   revalidatePath(`/prompt/${promptId}`);
   revalidatePath("/prompts");
   revalidatePath("/");
-  return error ? { error: error.message } : { copyCount: typeof data === "number" ? data : null };
+  return error
+    ? { error: error.message }
+    : {
+        copyCount: typeof row?.copy_count === "number" ? row.copy_count : null,
+        counted: Boolean(row?.counted)
+      };
 }
 
 export async function reportPrompt(formData: FormData) {

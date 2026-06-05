@@ -50,6 +50,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               </Link>
 
               <div className="flex flex-wrap items-center gap-2">
+                <Link href="/leaderboard" className="btn-ghost">
+                  Leaderboard
+                </Link>
                 {user ? (
                   <>
                     {profile?.role === "admin" ? (

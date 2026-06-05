@@ -12,6 +12,12 @@ export type Profile = {
   display_name?: string | null;
   avatar_url: string | null;
   role: "user" | "admin" | "creator";
+  manual_badge_override?: boolean;
+  manual_badge_type?: "none" | "bronze" | "silver" | "gold" | "diamond" | null;
+  manual_badge_assigned_by?: string | null;
+  manual_badge_assigned_at?: string | null;
+  copy_total?: number;
+  prompt_count?: number;
   created_at: string;
   updated_at?: string;
 };
@@ -32,7 +38,6 @@ export type Prompt = {
   aspect_ratio?: string | null;
   category?: string;
   reference_required?: boolean;
-  difficulty?: "beginner" | "intermediate" | "advanced";
   tags: string[];
   copy_count: number;
   like_count: number;

@@ -13,7 +13,6 @@ export type CreatorPrompt = {
   ai_model: string | null;
   aspect_ratio: string | null;
   reference_required: boolean;
-  difficulty: "beginner" | "intermediate" | "advanced";
   status: "pending" | "approved" | "rejected";
   rejection_reason: string | null;
   copy_count: number;
@@ -37,7 +36,7 @@ export async function getMyPrompts() {
   const { data, error } = await supabase
     .from("prompts")
     .select(
-      "id,user_id,title,description,prompt_text,image_url,category,tags,ai_model,aspect_ratio,reference_required,difficulty,status,rejection_reason,copy_count,view_count,created_at,updated_at"
+      "id,user_id,title,description,prompt_text,image_url,category,tags,ai_model,aspect_ratio,reference_required,status,rejection_reason,copy_count,view_count,created_at,updated_at"
     )
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
@@ -54,7 +53,7 @@ export async function getMyPromptById(id: string) {
   const { data, error } = await supabase
     .from("prompts")
     .select(
-      "id,user_id,title,description,prompt_text,image_url,category,tags,ai_model,aspect_ratio,reference_required,difficulty,status,rejection_reason,copy_count,view_count,created_at,updated_at"
+      "id,user_id,title,description,prompt_text,image_url,category,tags,ai_model,aspect_ratio,reference_required,status,rejection_reason,copy_count,view_count,created_at,updated_at"
     )
     .eq("id", id)
     .eq("user_id", user.id)

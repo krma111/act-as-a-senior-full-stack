@@ -34,6 +34,9 @@ const vercelUrl = cleanEnv(process.env.VERCEL_PROJECT_PRODUCTION_URL || process.
 export const siteUrl = cleanEnv(process.env.NEXT_PUBLIC_SITE_URL) || (vercelUrl ? `https://${vercelUrl}` : "http://localhost:3000");
 export const adminEmail = cleanEnv(process.env.NEXT_PUBLIC_ADMIN_EMAIL).toLowerCase();
 export const isGithubOAuthEnabled = cleanEnv(process.env.NEXT_PUBLIC_ENABLE_GITHUB_OAUTH).toLowerCase() === "true";
+export const resendApiKey = cleanEnv(process.env.RESEND_API_KEY);
+export const emailFrom = cleanEnv(process.env.EMAIL_FROM);
+export const hasEmailProviderEnv = isUsableSupabaseKey(resendApiKey) && Boolean(emailFrom);
 
 export function getSupabaseUrl() {
   if (!supabaseUrl) throw new Error("Missing required environment variable: NEXT_PUBLIC_SUPABASE_URL");

@@ -8,6 +8,8 @@ A production-ready Next.js, TypeScript, Tailwind CSS, and Supabase website for s
 - Supabase Auth with email/password, Google OAuth, optional GitHub OAuth, account recovery, and protected dashboard routes
 - Prompt publishing with image upload, category, tags, AI model, negative prompt, and public/private visibility
 - Prompt detail pages with copy count, favorite count, favorite button, report flow, tags, and creator metadata
+- Creator submission templates, automatic image aspect-ratio detection, max-5 tags, copy-protected counters, and creator crown badges
+- Resend-backed email notifications for submission received and prompt approval events
 - Admin dashboard for site settings, homepage text, categories, users, report moderation, featuring, hiding, and deleting prompts
 - SQL schema with RLS for public reads, user-owned writes, and admin override
 
@@ -28,6 +30,8 @@ SUPABASE_SERVICE_ROLE_KEY=
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_ADMIN_EMAIL=you@example.com
 NEXT_PUBLIC_ENABLE_GITHUB_OAUTH=false
+RESEND_API_KEY=
+EMAIL_FROM=PromptVault <notifications@yourdomain.com>
 ```
 
 3. In Supabase SQL Editor, run the project SQL in this order:
@@ -89,6 +93,7 @@ where lower(email) = lower('you@example.com');
 - The app uses `/auth/callback` for email verification, OAuth, and password recovery redirects.
 - The protected dashboard lives at `/dashboard`. Legacy `/profile`, `/auth/login`, and `/auth/signup` routes now redirect to the new routes.
 - Normal OAuth login uses `/auth/callback` without a query string and lands on `/dashboard`.
+- Email notifications use Resend only when `RESEND_API_KEY` and `EMAIL_FROM` are configured. If they are missing, the app does not fake delivery and the main prompt workflow still completes.
 
 ## PR3 in progress
 

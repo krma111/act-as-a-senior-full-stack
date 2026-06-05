@@ -3,6 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/admin-data";
+import { sendFollowerApprovedPromptEmail, sendPromptApprovedEmail } from "@/lib/email";
+import { siteUrl } from "@/lib/env";
+import { promptSlug } from "@/lib/slugs";
 
 function asString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -26,11 +29,6 @@ function tagsFrom(value: string) {
     .slice(0, 16);
 }
 
-function cleanDifficulty(value: string) {
-  if (value === "beginner" || value === "advanced") return value;
-  return "intermediate";
-}
-
 function cleanStatus(value: string) {
   if (value === "approved" || value === "rejected") return value;
   return "pending";
@@ -39,6 +37,11 @@ function cleanStatus(value: string) {
 function cleanRole(value: string) {
   if (value === "admin" || value === "creator") return value;
   return "user";
+}
+
+function cleanBadgeType(value: string) {
+  if (value === "bronze" || value === "silver" || value === "gold" || value === "diamond") return value;
+  return "none";
 }
 
 function cleanMoney(value: string) {
@@ -77,6 +80,35 @@ export async function approvePrompt(formData: FormData) {
     .eq("id", id);
 
   if (error) redirectWithMessage("/admin/prompts", "error", error.message);
+
+  const { data: prompt } = await supabase.from("prompts").select("id,title,user_id").eq("id", id).maybeSingle();
+  if (prompt) {
+    const promptUrl = `${siteUrl}/prompt/${promptSlug(prompt)}`;
+    const { data: creator } = await supabase.from("profiles").select("id,email").eq("id", prompt.user_id).maybeSingle();
+
+    if (creator?.email) {
+      await sendPromptApprovedEmail(creator.email, prompt.title, promptUrl, prompt.id, prompt.user_id);
+    }
+
+    const { data: savedRows } = await supabase.from("saved_prompts").select("user_id").eq("prompt_id", prompt.id);
+    const { data: followerRows } = await supabase.from("creator_follows").select("user_id").eq("creator_id", prompt.user_id);
+    const recipientIds = Array.from(
+      new Set([
+        ...((savedRows ?? []) as Array<{ user_id: string }>).map((row) => row.user_id),
+        ...((followerRows ?? []) as Array<{ user_id: string }>).map((row) => row.user_id)
+      ])
+    ).filter((userId) => userId !== prompt.user_id);
+
+    if (recipientIds.length) {
+      const { data: recipients } = await supabase.from("profiles").select("id,email").in("id", recipientIds);
+      await Promise.all(
+        ((recipients ?? []) as Array<{ id: string; email: string | null }>).map((recipient) =>
+          recipient.email ? sendFollowerApprovedPromptEmail(recipient.email, prompt.title, prompt.id, recipient.id) : Promise.resolve()
+        )
+      );
+    }
+  }
+
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath("/admin/prompts");
@@ -149,7 +181,6 @@ export async function updateAdminPrompt(formData: FormData) {
       ai_model: asString(formData, "ai_model"),
       aspect_ratio: asString(formData, "aspect_ratio") || "1:1",
       reference_required: asBoolean(formData, "reference_required"),
-      difficulty: cleanDifficulty(asString(formData, "difficulty")),
       status,
       rejection_reason: rejectionReason,
       featured: asBoolean(formData, "featured"),
@@ -183,6 +214,32 @@ export async function updateUserRole(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath("/admin/users");
   redirectWithMessage("/admin/users", "message", "User role updated.");
+}
+
+export async function updateUserBadge(formData: FormData) {
+  const { supabase, user: currentUser } = await requireAdmin("/admin/users");
+  const id = asString(formData, "id");
+  const badgeType = cleanBadgeType(asString(formData, "manual_badge_type"));
+  const manualOverride = badgeType !== "none";
+
+  if (!id) redirectWithMessage("/admin/users", "error", "User not found.");
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      manual_badge_override: manualOverride,
+      manual_badge_type: badgeType,
+      manual_badge_assigned_by: manualOverride ? currentUser.id : null,
+      manual_badge_assigned_at: manualOverride ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString()
+    })
+    .eq("id", id);
+
+  if (error) redirectWithMessage("/admin/users", "error", error.message);
+  revalidatePath("/");
+  revalidatePath("/admin");
+  revalidatePath("/admin/users");
+  redirectWithMessage("/admin/users", "message", manualOverride ? "Creator crown updated." : "Manual crown override removed.");
 }
 
 export async function updateSiteSettings(formData: FormData) {

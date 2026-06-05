@@ -6,7 +6,7 @@ import { getAdminPromptById } from "@/lib/admin-data";
 
 const categories = ["portrait", "fashion", "product", "cinematic", "architecture", "fantasy", "social", "branding", "general"];
 const models = ["Midjourney", "DALL-E", "Flux", "Stable Diffusion", "Leonardo", "Ideogram", "Firefly", "Other"];
-const ratios = ["1:1", "9:16", "16:9", "4:5", "3:2", "2:3"];
+const ratios = ["1:1", "9:16", "16:9", "4:5", "3:4"];
 
 export const dynamic = "force-dynamic";
 
@@ -106,15 +106,7 @@ export default async function AdminEditPromptPage({
           </label>
         </div>
 
-        <div className="grid gap-5 md:grid-cols-4">
-          <label className="block space-y-2">
-            <span className="label">Difficulty</span>
-            <select className="field" name="difficulty" required defaultValue={prompt.difficulty}>
-              <option value="beginner">beginner</option>
-              <option value="intermediate">intermediate</option>
-              <option value="advanced">advanced</option>
-            </select>
-          </label>
+        <div className="grid gap-5 md:grid-cols-3">
           <label className="block space-y-2">
             <span className="label">Status</span>
             <select className="field" name="status" required defaultValue={prompt.status}>

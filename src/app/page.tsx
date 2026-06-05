@@ -48,7 +48,7 @@ export default async function Home({
             </a>
           </div>
 
-          <div className="grid-cascade mx-auto mt-10 grid max-w-4xl gap-3 sm:grid-cols-3">
+          <div className="grid-cascade mx-auto mt-10 grid max-w-3xl gap-3 sm:grid-cols-2">
             <div className="panel rounded-2xl p-4 text-left">
               <p className="text-2xl font-black text-white">{totalVisiblePrompts}+</p>
               <p className="mt-1 text-sm text-slate-400">live prompt cards loaded</p>
@@ -56,10 +56,6 @@ export default async function Home({
             <div className="panel rounded-2xl p-4 text-left">
               <p className="text-2xl font-black text-white">Copy-ready</p>
               <p className="mt-1 text-sm text-slate-400">prompts with real image examples</p>
-            </div>
-            <div className="panel rounded-2xl p-4 text-left">
-              <p className="text-2xl font-black text-white">Creator-first</p>
-              <p className="mt-1 text-sm text-slate-400">publish, save, report, and manage</p>
             </div>
           </div>
 

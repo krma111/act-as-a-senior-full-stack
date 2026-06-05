@@ -12,6 +12,10 @@ type LooseProfileRow = {
   display_name?: string | null;
   avatar_url?: string | null;
   role?: string | null;
+  manual_badge_override?: boolean | null;
+  manual_badge_type?: string | null;
+  manual_badge_assigned_by?: string | null;
+  manual_badge_assigned_at?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 };
@@ -61,6 +65,16 @@ function normalizeProfile(user: User, row?: LooseProfileRow | null): Profile {
       (typeof user.user_metadata?.avatar_url === "string" ? user.user_metadata.avatar_url : null) ??
       null,
     role: normalizeRole(row?.role),
+    manual_badge_override: Boolean(row?.manual_badge_override),
+    manual_badge_type:
+      row?.manual_badge_type === "bronze" ||
+      row?.manual_badge_type === "silver" ||
+      row?.manual_badge_type === "gold" ||
+      row?.manual_badge_type === "diamond"
+        ? row.manual_badge_type
+        : "none",
+    manual_badge_assigned_by: row?.manual_badge_assigned_by ?? null,
+    manual_badge_assigned_at: row?.manual_badge_assigned_at ?? null,
     created_at: row?.created_at ?? user.created_at ?? new Date().toISOString(),
     updated_at: row?.updated_at ?? row?.created_at ?? user.updated_at ?? user.created_at ?? new Date().toISOString()
   };
