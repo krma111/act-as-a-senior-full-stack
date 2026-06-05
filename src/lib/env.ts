@@ -33,7 +33,6 @@ export const isPreviewMode = !hasSupabaseEnv;
 const vercelUrl = cleanEnv(process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL);
 export const siteUrl = cleanEnv(process.env.NEXT_PUBLIC_SITE_URL) || (vercelUrl ? `https://${vercelUrl}` : "http://localhost:3000");
 export const adminEmail = cleanEnv(process.env.NEXT_PUBLIC_ADMIN_EMAIL).toLowerCase();
-export const isGoogleOAuthEnabled = cleanEnv(process.env.NEXT_PUBLIC_ENABLE_GOOGLE_OAUTH).toLowerCase() === "true";
 export const isGithubOAuthEnabled = cleanEnv(process.env.NEXT_PUBLIC_ENABLE_GITHUB_OAUTH).toLowerCase() === "true";
 
 export function getSupabaseUrl() {

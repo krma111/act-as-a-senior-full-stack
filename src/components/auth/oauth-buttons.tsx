@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { getClientAuthErrorMessage } from "@/lib/auth/client-errors";
 import { getAuthErrorMessage } from "@/lib/auth/errors";
 import { getAuthCallbackUrl } from "@/lib/auth/urls";
-import { isGithubOAuthEnabled, isGoogleOAuthEnabled } from "@/lib/env";
+import { isGithubOAuthEnabled } from "@/lib/env";
 import { createClient } from "@/lib/supabase/client";
 import { GoogleIcon } from "@/components/auth/icons";
 
@@ -24,11 +24,6 @@ export function OAuthButtons({
   async function signIn(provider: Provider) {
     if (!authEnabled) {
       toast.error("Supabase is not configured");
-      return;
-    }
-
-    if (provider === "google" && !isGoogleOAuthEnabled) {
-      toast.error("Google login is not enabled yet.");
       return;
     }
 
@@ -55,7 +50,12 @@ export function OAuthButtons({
       }
 
       if (data.url) {
-        window.location.assign(data.url);
+        try {
+          window.location.assign(data.url);
+        } catch {
+          toast.error("Your browser blocked the Google sign-in redirect. Allow popups and redirects, then try again.");
+          setActiveProvider(null);
+        }
         return;
       }
 
@@ -76,11 +76,8 @@ export function OAuthButtons({
         disabled={disabled || activeProvider !== null}
       >
         {activeProvider === "google" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <GoogleIcon />}
-        Continue with Google
+        {activeProvider === "google" ? "Opening Google..." : "Continue with Google"}
       </button>
-      {!isGoogleOAuthEnabled ? (
-        <p className="text-center text-xs text-amber-100">Google login is not enabled yet.</p>
-      ) : null}
       {isGithubOAuthEnabled ? (
         <button type="button" className="btn-ghost w-full justify-center py-3" onClick={() => signIn("github")} disabled={disabled || activeProvider !== null}>
           {activeProvider === "github" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Github className="h-4 w-4" />}

@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { getAuthErrorMessage } from "@/lib/auth/errors";
 import { getSupabaseAnonKey, getSupabaseUrl, hasSupabaseEnv, siteUrl } from "@/lib/env";
 
 type CookieToSet = {
@@ -74,7 +75,7 @@ export async function GET(request: Request) {
   const redirectOrigin = origin || siteUrl;
 
   if (authError) {
-    return NextResponse.redirect(`${redirectOrigin}/login?error=${encodeURIComponent(authError)}`);
+    return NextResponse.redirect(`${redirectOrigin}/login?error=${encodeURIComponent(getAuthErrorMessage(authError))}`);
   }
 
   if (!hasSupabaseEnv) {
@@ -101,7 +102,7 @@ export async function GET(request: Request) {
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
-    return NextResponse.redirect(`${redirectOrigin}/login?error=${encodeURIComponent(error.message)}`);
+    return NextResponse.redirect(`${redirectOrigin}/login?error=${encodeURIComponent(getAuthErrorMessage(error))}`);
   }
 
   return NextResponse.redirect(`${redirectOrigin}${next}`);
