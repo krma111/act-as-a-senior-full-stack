@@ -209,10 +209,18 @@ export async function updateSiteSettings(formData: FormData) {
 export async function approvePack(formData: FormData) {
   const { supabase } = await requireAdmin("/admin/packs");
   const id = asString(formData, "id");
-  const promptCount = Number(asString(formData, "prompt_count"));
-  const price = Number(asString(formData, "price"));
 
   if (!id) redirectWithMessage("/admin/packs", "error", "Pack not found.");
+  const { data: pack, error: packError } = await supabase
+    .from("prompt_packs")
+    .select("id,price,is_paid,total_prompts")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (packError || !pack) redirectWithMessage("/admin/packs", "error", packError?.message ?? "Pack not found.");
+
+  const promptCount = Number(pack.total_prompts) || 0;
+  const price = Number(pack.price) || 0;
   if (price > 0 && promptCount < 5) {
     redirectWithMessage("/admin/packs", "error", "Paid packs must include at least 5 prompts before approval.");
   }
@@ -262,14 +270,26 @@ export async function deletePack(formData: FormData) {
 export async function approvePaymentRequest(formData: FormData) {
   const { supabase, user } = await requireAdmin("/admin/payments");
   const id = asString(formData, "id");
-  const userId = asString(formData, "user_id");
-  const packId = asString(formData, "pack_id");
 
-  if (!id || !userId || !packId) redirectWithMessage("/admin/payments", "error", "Payment request is incomplete.");
+  if (!id) redirectWithMessage("/admin/payments", "error", "Payment request is incomplete.");
+
+  const { data: request, error: requestError } = await supabase
+    .from("payment_requests")
+    .select("id,user_id,pack_id,status")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (requestError || !request) {
+    redirectWithMessage("/admin/payments", "error", requestError?.message ?? "Payment request not found.");
+  }
+
+  if (request.status !== "pending") {
+    redirectWithMessage("/admin/payments", "error", "Only pending payment requests can be approved.");
+  }
 
   const now = new Date().toISOString();
   const access = await supabase.from("user_pack_access").upsert(
-    { user_id: userId, pack_id: packId, granted_by: user.id, granted_at: now, created_at: now },
+    { user_id: request.user_id, pack_id: request.pack_id, granted_by: user.id, granted_at: now, created_at: now },
     { onConflict: "user_id,pack_id" }
   );
 
