@@ -103,6 +103,16 @@ type PackRow = {
 };
 type PaymentRow = Omit<AdminPaymentRequest, "user_email" | "pack_name">;
 
+const adminServiceError =
+  "Admin database service is not configured. Add SUPABASE_SERVICE_ROLE_KEY in Vercel Production environment variables.";
+
+type AdminContext = Awaited<ReturnType<typeof getAuthSessionState>> & {
+  supabase: NonNullable<Awaited<ReturnType<typeof getAuthSessionState>>["supabase"]>;
+  user: NonNullable<Awaited<ReturnType<typeof getAuthSessionState>>["user"]>;
+  profile: NonNullable<Awaited<ReturnType<typeof getAuthSessionState>>["profile"]>;
+  adminDatabaseError: string | null;
+};
+
 function isMissingTableError(message?: string | null) {
   const value = (message ?? "").toLowerCase();
   return value.includes("schema cache") || value.includes("could not find the table") || value.includes("does not exist");
@@ -129,7 +139,12 @@ export async function requireAdmin(nextPath = "/admin") {
     redirect("/dashboard?error=Admin%20access%20required.");
   }
 
-  return { supabase: hasSupabaseServiceRoleKey ? createAdminClient() : supabase, user, profile };
+  return {
+    supabase: hasSupabaseServiceRoleKey ? createAdminClient() : supabase,
+    user,
+    profile,
+    adminDatabaseError: hasSupabaseServiceRoleKey ? null : adminServiceError
+  } satisfies AdminContext;
 }
 
 export async function getAdminStats() {
@@ -195,8 +210,9 @@ export async function getAdminSiteSettings() {
 }
 
 export async function getAdminPrompts(status?: string) {
-  const { supabase } = await requireAdmin("/admin/prompts");
+  const { supabase, adminDatabaseError } = await requireAdmin("/admin/prompts");
   const activeStatus = sanitizeStatus(status);
+
   const [allCount, pendingCount, approvedCount, rejectedCount] = await Promise.all([
     supabase.from("prompts").select("id", { count: "exact", head: true }),
     supabase.from("prompts").select("id", { count: "exact", head: true }).eq("status", "pending"),
@@ -220,7 +236,20 @@ export async function getAdminPrompts(status?: string) {
   if (activeStatus !== "all") query = query.eq("status", activeStatus);
 
   const { data, error } = await query;
-  if (error) return { prompts: [] as AdminPrompt[], error: error.message, activeStatus, counts };
+  if (error) {
+    return {
+      prompts: [] as AdminPrompt[],
+      error: error.message,
+      activeStatus,
+      counts,
+      diagnostics: {
+        renderedCount: 0,
+        pendingCount: counts.pending,
+        usingServiceRole: !adminDatabaseError,
+        serviceWarning: adminDatabaseError
+      }
+    };
+  }
 
   const rows = (data ?? []) as PromptRow[];
   const userIds = Array.from(new Set(rows.map((prompt) => prompt.user_id).filter(Boolean)));
@@ -237,8 +266,7 @@ export async function getAdminPrompts(status?: string) {
     }
   }
 
-  return {
-    prompts: rows.map((prompt) => {
+  const prompts = rows.map((prompt) => {
       const creator = profilesById.get(prompt.user_id);
       return {
         ...prompt,
@@ -246,10 +274,19 @@ export async function getAdminPrompts(status?: string) {
         creator_email: creator?.email ?? null,
         creator_name: creator?.full_name ?? creator?.display_name ?? null
       };
-    }),
+    });
+
+  return {
+    prompts,
     error: null,
     activeStatus,
-    counts
+    counts,
+    diagnostics: {
+      renderedCount: prompts.length,
+      pendingCount: counts.pending,
+      usingServiceRole: !adminDatabaseError,
+      serviceWarning: adminDatabaseError
+    }
   };
 }
 

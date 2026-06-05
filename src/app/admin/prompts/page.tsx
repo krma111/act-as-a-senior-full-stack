@@ -34,7 +34,8 @@ export default async function AdminPromptsPage({
   searchParams: Promise<{ status?: string; message?: string; error?: string }>;
 }) {
   const params = await searchParams;
-  const { prompts, error, activeStatus, counts } = await getAdminPrompts(params.status);
+  const { prompts, error, activeStatus, counts, diagnostics } = await getAdminPrompts(params.status);
+  const hasHiddenPendingProblem = activeStatus === "pending" && !prompts.length && counts.pending > 0;
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
@@ -58,13 +59,24 @@ export default async function AdminPromptsPage({
         </div>
       </div>
 
+      <div className="mb-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-300">
+        Showing {diagnostics.renderedCount} prompts. Pending in database: {diagnostics.pendingCount}. Admin service:{" "}
+        {diagnostics.usingServiceRole ? "configured" : "not configured"}.
+        {diagnostics.serviceWarning ? <span className="mt-2 block text-amber-200">{diagnostics.serviceWarning}</span> : null}
+      </div>
+
       {(params.message || params.error || error) && (
         <div className={`mb-6 rounded-2xl border p-4 text-sm ${params.error || error ? "border-red-500/30 bg-red-500/10 text-red-100" : "border-brand/30 bg-brand/10 text-brand"}`}>
           {params.error ?? error ?? params.message}
         </div>
       )}
 
-      {!prompts.length ? (
+      {hasHiddenPendingProblem ? (
+        <section className="card-surface rounded-[28px] p-10 text-center">
+          <p className="text-xl font-bold text-white">Pending prompts exist, but this page could not load them.</p>
+          <p className="mt-2 text-sm text-slate-400">Check the admin service configuration and Supabase RLS policies instead of approving blindly.</p>
+        </section>
+      ) : !prompts.length ? (
         <section className="card-surface rounded-[28px] p-10 text-center">
           <p className="text-xl font-bold text-white">No prompts found.</p>
           <p className="mt-2 text-sm text-slate-400">When creators submit prompts, they will appear here for moderation.</p>
