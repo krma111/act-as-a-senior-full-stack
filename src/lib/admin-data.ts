@@ -51,6 +51,16 @@ export type AdminStats = {
 };
 
 type PromptRow = Omit<AdminPrompt, "creator_email" | "creator_name"> & { price?: number | null };
+type AdminPromptRpcRow = Omit<AdminPrompt, "status" | "price"> & {
+  status: string;
+  price?: number | string | null;
+};
+type AdminPromptCounts = {
+  all: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+};
 
 export type AdminPack = {
   id: string;
@@ -121,6 +131,28 @@ function isMissingTableError(message?: string | null) {
 function sanitizeStatus(value?: string): AdminPromptStatus | "all" {
   if (value === "pending" || value === "approved" || value === "rejected") return value;
   return "all";
+}
+
+function normalizePromptStatus(value: string): AdminPromptStatus {
+  if (value === "approved" || value === "rejected") return value;
+  return "pending";
+}
+
+function emptyPromptCounts(): AdminPromptCounts {
+  return { all: 0, pending: 0, approved: 0, rejected: 0 };
+}
+
+function countsFromRpcRows(rows: Array<{ status?: string | null; count?: number | string | null }>): AdminPromptCounts {
+  const counts = emptyPromptCounts();
+
+  for (const row of rows) {
+    const status = normalizePromptStatus(row.status ?? "pending");
+    const count = Number(row.count) || 0;
+    counts[status] += count;
+    counts.all += count;
+  }
+
+  return counts;
 }
 
 function normalizeRole(value: string): AdminRole {
@@ -213,6 +245,52 @@ export async function getAdminPrompts(status?: string) {
   const { supabase, adminDatabaseError } = await requireAdmin("/admin/prompts");
   const activeStatus = sanitizeStatus(status);
 
+  if (adminDatabaseError) {
+    const [countResult, promptResult] = await Promise.all([
+      supabase.rpc("admin_prompt_counts"),
+      supabase.rpc("admin_list_prompts", { filter_status: activeStatus === "all" ? null : activeStatus })
+    ]);
+    const counts = countsFromRpcRows((countResult.data ?? []) as Array<{ status?: string | null; count?: number | string | null }>);
+
+    if (countResult.error || promptResult.error) {
+      return {
+        prompts: [] as AdminPrompt[],
+        error: countResult.error?.message ?? promptResult.error?.message ?? "Admin prompt query failed.",
+        activeStatus,
+        counts,
+        diagnostics: {
+          renderedCount: 0,
+          pendingCount: counts.pending,
+          usingServiceRole: false,
+          serviceWarning: "Admin session query failed. Check Supabase admin RPC migration."
+        }
+      };
+    }
+
+    const rows = (promptResult.data ?? []) as AdminPromptRpcRow[];
+    const prompts = rows.map((prompt) => ({
+      ...prompt,
+      status: normalizePromptStatus(prompt.status),
+      tags: Array.isArray(prompt.tags) ? prompt.tags : [],
+      price: Number(prompt.price) || 0,
+      creator_email: prompt.creator_email ?? null,
+      creator_name: prompt.creator_name ?? null
+    }));
+
+    return {
+      prompts,
+      error: null,
+      activeStatus,
+      counts,
+      diagnostics: {
+        renderedCount: prompts.length,
+        pendingCount: counts.pending,
+        usingServiceRole: false,
+        serviceWarning: null
+      }
+    };
+  }
+
   const [allCount, pendingCount, approvedCount, rejectedCount] = await Promise.all([
     supabase.from("prompts").select("id", { count: "exact", head: true }),
     supabase.from("prompts").select("id", { count: "exact", head: true }).eq("status", "pending"),
@@ -245,8 +323,8 @@ export async function getAdminPrompts(status?: string) {
       diagnostics: {
         renderedCount: 0,
         pendingCount: counts.pending,
-        usingServiceRole: !adminDatabaseError,
-        serviceWarning: adminDatabaseError
+        usingServiceRole: true,
+        serviceWarning: null
       }
     };
   }
@@ -284,8 +362,8 @@ export async function getAdminPrompts(status?: string) {
     diagnostics: {
       renderedCount: prompts.length,
       pendingCount: counts.pending,
-      usingServiceRole: !adminDatabaseError,
-      serviceWarning: adminDatabaseError
+      usingServiceRole: true,
+      serviceWarning: null
     }
   };
 }

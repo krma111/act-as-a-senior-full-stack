@@ -60,8 +60,8 @@ export default async function AdminPromptsPage({
       </div>
 
       <div className="mb-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-300">
-        Showing {diagnostics.renderedCount} prompts. Pending in database: {diagnostics.pendingCount}. Admin service:{" "}
-        {diagnostics.usingServiceRole ? "configured" : "not configured"}.
+        Showing {diagnostics.renderedCount} prompts. Pending in database: {diagnostics.pendingCount}. Admin access:{" "}
+        {diagnostics.usingServiceRole ? "service role" : "verified admin session"}.
         {diagnostics.serviceWarning ? <span className="mt-2 block text-amber-200">{diagnostics.serviceWarning}</span> : null}
       </div>
 
