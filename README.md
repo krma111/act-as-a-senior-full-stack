@@ -61,12 +61,14 @@ npm run dev
 6. Configure Supabase Auth:
 
 - Auth > URL Configuration
-  - Site URL: `http://localhost:3000` locally
+  - Site URL locally: `http://localhost:3000`
+  - Site URL in production: `https://promptvault-ai-rho.vercel.app`
   - Add redirect URL: `http://localhost:3000/auth/callback`
-  - Add your production redirect URL: `https://promptvault-ai-rho.vercel.app/auth/callback`
+  - Add production redirect URL: `https://promptvault-ai-rho.vercel.app/auth/callback`
+  - Add your custom-domain redirect URL too if you connect one, for example `https://your-domain.com/auth/callback`
 - Auth > Providers
-  - Enable Google in Supabase, then set `NEXT_PUBLIC_ENABLE_GOOGLE_OAUTH=true`
-  - In Google Cloud, set the authorized redirect URI to `https://<your-supabase-project-ref>.supabase.co/auth/v1/callback`
+  - Enable Google in Supabase, add the Google Client ID and Client Secret, then set `NEXT_PUBLIC_ENABLE_GOOGLE_OAUTH=true`
+  - For this Supabase project, set the Google Cloud authorized redirect URI to `https://nxmveyrpvhnaaxszrchh.supabase.co/auth/v1/callback`
   - Optional: enable GitHub in Supabase and set `NEXT_PUBLIC_ENABLE_GITHUB_OAUTH=true`
   - In GitHub OAuth App, set the authorization callback URL to `https://<your-supabase-project-ref>.supabase.co/auth/v1/callback`
 - Auth > Email

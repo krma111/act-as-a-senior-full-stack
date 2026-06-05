@@ -12,17 +12,17 @@ import { GoogleIcon } from "@/components/auth/icons";
 
 type Provider = "google" | "github";
 
-export const hasOAuthProviders = isGoogleOAuthEnabled || isGithubOAuthEnabled;
-
-export function OAuthButtons({ disabled }: { disabled?: boolean }) {
+export function OAuthButtons({
+  authEnabled,
+  disabled
+}: {
+  authEnabled: boolean;
+  disabled?: boolean;
+}) {
   const [activeProvider, setActiveProvider] = useState<Provider | null>(null);
 
-  if (!hasOAuthProviders) {
-    return null;
-  }
-
   async function signIn(provider: Provider) {
-    if (disabled) {
+    if (!authEnabled) {
       toast.error("Supabase is not configured");
       return;
     }
@@ -69,16 +69,17 @@ export function OAuthButtons({ disabled }: { disabled?: boolean }) {
 
   return (
     <div className="grid gap-3">
-      {isGoogleOAuthEnabled ? (
-        <button
-          type="button"
-          className="btn-ghost w-full justify-center py-3"
-          onClick={() => signIn("google")}
-          disabled={disabled || activeProvider !== null}
-        >
-          {activeProvider === "google" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <GoogleIcon />}
-          Continue with Google
-        </button>
+      <button
+        type="button"
+        className="btn-ghost w-full justify-center py-3"
+        onClick={() => signIn("google")}
+        disabled={disabled || activeProvider !== null}
+      >
+        {activeProvider === "google" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <GoogleIcon />}
+        Continue with Google
+      </button>
+      {!isGoogleOAuthEnabled ? (
+        <p className="text-center text-xs text-amber-100">Google login is not enabled yet.</p>
       ) : null}
       {isGithubOAuthEnabled ? (
         <button type="button" className="btn-ghost w-full justify-center py-3" onClick={() => signIn("github")} disabled={disabled || activeProvider !== null}>
