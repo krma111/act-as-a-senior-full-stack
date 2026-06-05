@@ -125,6 +125,8 @@ export async function createCreatorPrompt(formData: FormData) {
 
   if (error) redirectWithMessage("/dashboard/upload", "error", error.message);
 
+  revalidatePath("/admin");
+  revalidatePath("/admin/prompts");
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/my-prompts");
   redirectWithMessage("/dashboard/my-prompts", "message", "Prompt submitted for approval.");
@@ -157,6 +159,8 @@ export async function updateCreatorPrompt(formData: FormData) {
 
   if (error) redirectWithMessage(`/dashboard/edit/${id}`, "error", error.message);
 
+  revalidatePath("/admin");
+  revalidatePath("/admin/prompts");
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/my-prompts");
   revalidatePath(`/dashboard/edit/${id}`);

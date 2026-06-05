@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { getAuthSessionState } from "@/lib/auth/session";
+import { hasSupabaseServiceRoleKey } from "@/lib/env";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Profile, SiteSettings } from "@/lib/types";
 
 export type AdminPromptStatus = "pending" | "approved" | "rejected";
@@ -127,7 +129,7 @@ export async function requireAdmin(nextPath = "/admin") {
     redirect("/dashboard?error=Admin%20access%20required.");
   }
 
-  return { supabase, user, profile };
+  return { supabase: hasSupabaseServiceRoleKey ? createAdminClient() : supabase, user, profile };
 }
 
 export async function getAdminStats() {
@@ -195,6 +197,19 @@ export async function getAdminSiteSettings() {
 export async function getAdminPrompts(status?: string) {
   const { supabase } = await requireAdmin("/admin/prompts");
   const activeStatus = sanitizeStatus(status);
+  const [allCount, pendingCount, approvedCount, rejectedCount] = await Promise.all([
+    supabase.from("prompts").select("id", { count: "exact", head: true }),
+    supabase.from("prompts").select("id", { count: "exact", head: true }).eq("status", "pending"),
+    supabase.from("prompts").select("id", { count: "exact", head: true }).eq("status", "approved"),
+    supabase.from("prompts").select("id", { count: "exact", head: true }).eq("status", "rejected")
+  ]);
+  const counts = {
+    all: allCount.count ?? 0,
+    pending: pendingCount.count ?? 0,
+    approved: approvedCount.count ?? 0,
+    rejected: rejectedCount.count ?? 0
+  };
+
   let query = supabase
     .from("prompts")
     .select(
@@ -205,7 +220,7 @@ export async function getAdminPrompts(status?: string) {
   if (activeStatus !== "all") query = query.eq("status", activeStatus);
 
   const { data, error } = await query;
-  if (error) return { prompts: [] as AdminPrompt[], error: error.message, activeStatus };
+  if (error) return { prompts: [] as AdminPrompt[], error: error.message, activeStatus, counts };
 
   const rows = (data ?? []) as PromptRow[];
   const userIds = Array.from(new Set(rows.map((prompt) => prompt.user_id).filter(Boolean)));
@@ -233,7 +248,8 @@ export async function getAdminPrompts(status?: string) {
       };
     }),
     error: null,
-    activeStatus
+    activeStatus,
+    counts
   };
 }
 

@@ -34,7 +34,7 @@ export default async function AdminPromptsPage({
   searchParams: Promise<{ status?: string; message?: string; error?: string }>;
 }) {
   const params = await searchParams;
-  const { prompts, error, activeStatus } = await getAdminPrompts(params.status);
+  const { prompts, error, activeStatus, counts } = await getAdminPrompts(params.status);
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
@@ -52,7 +52,7 @@ export default async function AdminPromptsPage({
               href={filter.value === "all" ? "/admin/prompts" : `/admin/prompts?status=${filter.value}`}
               className={activeStatus === filter.value ? "btn-primary" : "btn-ghost"}
             >
-              {filter.label}
+              {filter.label} <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs">{counts[filter.value as keyof typeof counts] ?? 0}</span>
             </Link>
           ))}
         </div>
