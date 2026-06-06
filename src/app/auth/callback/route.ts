@@ -2,6 +2,7 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getAuthErrorMessage } from "@/lib/auth/errors";
+import { sendWelcomeEmailIfNeeded } from "@/lib/email";
 import { getSupabaseAnonKey, getSupabaseUrl, hasSupabaseEnv, siteUrl } from "@/lib/env";
 
 type CookieToSet = {
@@ -99,10 +100,22 @@ export async function GET(request: Request) {
     }
   });
 
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
     return NextResponse.redirect(`${redirectOrigin}/login?error=${encodeURIComponent(getAuthErrorMessage(error))}`);
+  }
+
+  const user = data.user;
+  if (user?.email) {
+    const name =
+      typeof user.user_metadata?.full_name === "string"
+        ? user.user_metadata.full_name
+        : typeof user.user_metadata?.name === "string"
+          ? user.user_metadata.name
+          : user.email.split("@")[0];
+
+    await sendWelcomeEmailIfNeeded(user.email, name, user.id);
   }
 
   return NextResponse.redirect(`${redirectOrigin}${next}`);

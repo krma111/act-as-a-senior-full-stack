@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { adminEmail, hasSupabaseEnv, isPreviewMode, siteUrl } from "@/lib/env";
 import { clearPreviewUser } from "@/lib/preview-auth";
 import { isValidEmail, normalizeEmail } from "@/lib/auth/validation";
+import { sendWelcomeEmailIfNeeded } from "@/lib/email";
 
 function asString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -48,7 +49,7 @@ export async function signUp(formData: FormData) {
 
   const supabase = await createClient();
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -58,6 +59,9 @@ export async function signUp(formData: FormData) {
   });
 
   if (error) redirectWithMessage("/signup", error.message);
+  if (data.user?.email) {
+    await sendWelcomeEmailIfNeeded(data.user.email, displayName || data.user.email.split("@")[0], data.user.id);
+  }
   redirect("/dashboard");
 }
 

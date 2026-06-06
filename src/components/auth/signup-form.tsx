@@ -80,6 +80,16 @@ export function SignupForm({
       }
 
       if (data.session) {
+        try {
+          await fetch("/api/auth/welcome", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${data.session.access_token}`
+            }
+          });
+        } catch (error) {
+          console.error("Welcome email request failed", error);
+        }
         toast.success("Account created.");
         router.push("/dashboard");
         router.refresh();

@@ -3,9 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/admin-data";
-import { sendFollowerApprovedPromptEmail, sendPromptApprovedEmail } from "@/lib/email";
+import { sendFollowerApprovedPromptEmail, sendPromptApprovedEmail, sendRejectionEmail } from "@/lib/email";
 import { siteUrl } from "@/lib/env";
 import { promptSlug } from "@/lib/slugs";
+
+type AdminSupabase = Awaited<ReturnType<typeof requireAdmin>>["supabase"];
+type ModeratedPrompt = {
+  id: string;
+  title: string;
+  user_id: string;
+};
 
 function asString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -71,6 +78,41 @@ async function countAdmins(supabase: Awaited<ReturnType<typeof requireAdmin>>["s
   return count ?? 0;
 }
 
+async function notifyPromptApproved(supabase: AdminSupabase, prompt: ModeratedPrompt) {
+  const promptUrl = `${siteUrl}/prompt/${promptSlug(prompt)}`;
+  const { data: creator } = await supabase.from("profiles").select("id,email").eq("id", prompt.user_id).maybeSingle();
+
+  if (creator?.email) {
+    await sendPromptApprovedEmail(creator.email, prompt.title, promptUrl, prompt.id, prompt.user_id);
+  }
+
+  const { data: savedRows } = await supabase.from("saved_prompts").select("user_id").eq("prompt_id", prompt.id);
+  const { data: followerRows } = await supabase.from("creator_follows").select("user_id").eq("creator_id", prompt.user_id);
+  const recipientIds = Array.from(
+    new Set([
+      ...((savedRows ?? []) as Array<{ user_id: string }>).map((row) => row.user_id),
+      ...((followerRows ?? []) as Array<{ user_id: string }>).map((row) => row.user_id)
+    ])
+  ).filter((userId) => userId !== prompt.user_id);
+
+  if (!recipientIds.length) return;
+
+  const { data: recipients } = await supabase.from("profiles").select("id,email").in("id", recipientIds);
+  await Promise.all(
+    ((recipients ?? []) as Array<{ id: string; email: string | null }>).map((recipient) =>
+      recipient.email ? sendFollowerApprovedPromptEmail(recipient.email, prompt.title, prompt.id, recipient.id) : Promise.resolve()
+    )
+  );
+}
+
+async function notifyPromptRejected(supabase: AdminSupabase, prompt: ModeratedPrompt, reason: string) {
+  const { data: creator } = await supabase.from("profiles").select("email").eq("id", prompt.user_id).maybeSingle();
+
+  if (creator?.email) {
+    await sendRejectionEmail(creator.email, prompt.title, reason, prompt.id, prompt.user_id);
+  }
+}
+
 export async function approvePrompt(formData: FormData) {
   const { supabase } = await requireAdmin("/admin/prompts");
   const id = asString(formData, "id");
@@ -83,30 +125,7 @@ export async function approvePrompt(formData: FormData) {
 
   const { data: prompt } = await supabase.from("prompts").select("id,title,user_id").eq("id", id).maybeSingle();
   if (prompt) {
-    const promptUrl = `${siteUrl}/prompt/${promptSlug(prompt)}`;
-    const { data: creator } = await supabase.from("profiles").select("id,email").eq("id", prompt.user_id).maybeSingle();
-
-    if (creator?.email) {
-      await sendPromptApprovedEmail(creator.email, prompt.title, promptUrl, prompt.id, prompt.user_id);
-    }
-
-    const { data: savedRows } = await supabase.from("saved_prompts").select("user_id").eq("prompt_id", prompt.id);
-    const { data: followerRows } = await supabase.from("creator_follows").select("user_id").eq("creator_id", prompt.user_id);
-    const recipientIds = Array.from(
-      new Set([
-        ...((savedRows ?? []) as Array<{ user_id: string }>).map((row) => row.user_id),
-        ...((followerRows ?? []) as Array<{ user_id: string }>).map((row) => row.user_id)
-      ])
-    ).filter((userId) => userId !== prompt.user_id);
-
-    if (recipientIds.length) {
-      const { data: recipients } = await supabase.from("profiles").select("id,email").in("id", recipientIds);
-      await Promise.all(
-        ((recipients ?? []) as Array<{ id: string; email: string | null }>).map((recipient) =>
-          recipient.email ? sendFollowerApprovedPromptEmail(recipient.email, prompt.title, prompt.id, recipient.id) : Promise.resolve()
-        )
-      );
-    }
+    await notifyPromptApproved(supabase, prompt);
   }
 
   revalidatePath("/");
@@ -121,12 +140,14 @@ export async function rejectPrompt(formData: FormData) {
   const reason = asString(formData, "rejection_reason");
   if (reason.length < 3) redirectWithMessage("/admin/prompts", "error", "Rejection reason is required.");
 
+  const { data: prompt } = await supabase.from("prompts").select("id,title,user_id").eq("id", id).maybeSingle();
   const { error } = await supabase
     .from("prompts")
     .update({ status: "rejected", rejection_reason: reason, updated_at: new Date().toISOString() })
     .eq("id", id);
 
   if (error) redirectWithMessage("/admin/prompts", "error", error.message);
+  if (prompt) await notifyPromptRejected(supabase, prompt, reason);
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath("/admin/prompts");
@@ -168,6 +189,7 @@ export async function updateAdminPrompt(formData: FormData) {
   const { supabase } = await requireAdmin(errorPath);
   const status = cleanStatus(asString(formData, "status"));
   const rejectionReason = status === "rejected" ? asString(formData, "rejection_reason") || "Rejected by admin." : null;
+  const { data: currentPrompt } = await supabase.from("prompts").select("id,title,user_id,status").eq("id", id).maybeSingle();
   const { error } = await supabase
     .from("prompts")
     .update({
@@ -190,6 +212,15 @@ export async function updateAdminPrompt(formData: FormData) {
     .eq("id", id);
 
   if (error) redirectWithMessage(errorPath, "error", error.message);
+  if (currentPrompt && currentPrompt.status !== status) {
+    const prompt = {
+      id: currentPrompt.id,
+      title: asString(formData, "title"),
+      user_id: currentPrompt.user_id
+    };
+    if (status === "approved") await notifyPromptApproved(supabase, prompt);
+    if (status === "rejected") await notifyPromptRejected(supabase, prompt, rejectionReason ?? "Rejected by admin.");
+  }
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath("/admin/prompts");
