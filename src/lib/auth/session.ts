@@ -12,6 +12,10 @@ type LooseProfileRow = {
   display_name?: string | null;
   avatar_url?: string | null;
   role?: string | null;
+  status?: string | null;
+  banned_at?: string | null;
+  banned_by?: string | null;
+  ban_reason?: string | null;
   manual_badge_override?: boolean | null;
   manual_badge_type?: string | null;
   manual_badge_assigned_by?: string | null;
@@ -65,6 +69,10 @@ function normalizeProfile(user: User, row?: LooseProfileRow | null): Profile {
       (typeof user.user_metadata?.avatar_url === "string" ? user.user_metadata.avatar_url : null) ??
       null,
     role: normalizeRole(row?.role),
+    status: row?.status === "banned" ? "banned" : "active",
+    banned_at: row?.banned_at ?? null,
+    banned_by: row?.banned_by ?? null,
+    ban_reason: row?.ban_reason ?? null,
     manual_badge_override: Boolean(row?.manual_badge_override),
     manual_badge_type:
       row?.manual_badge_type === "bronze" ||

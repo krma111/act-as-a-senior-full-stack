@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { CheckCircle2, ExternalLink, Mail, Sparkles, UserRound } from "lucide-react";
-import { updateOwnProfile } from "@/lib/auth/actions";
+import { logout, updateOwnProfile } from "@/lib/auth/actions";
 import { getAuthSessionState, getSavedPromptsForDashboard } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +35,23 @@ export default async function DashboardPage({
 
   if (!supabase || !user || !profile) {
     redirect("/login");
+  }
+
+  if (profile.status === "banned") {
+    return (
+      <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+        <section className="card-surface rounded-[28px] p-8 text-center">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-red-200">Account blocked</p>
+          <h1 className="mt-3 text-3xl font-black text-white">Your account is currently banned.</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-400">
+            Creator and dashboard actions are disabled for this account. {profile.ban_reason ? `Reason: ${profile.ban_reason}` : "Contact support if you believe this is a mistake."}
+          </p>
+          <form action={logout} className="mt-6">
+            <button className="btn-primary">Log out</button>
+          </form>
+        </section>
+      </main>
+    );
   }
 
   const savedPrompts = await getSavedPromptsForDashboard(supabase, user.id);

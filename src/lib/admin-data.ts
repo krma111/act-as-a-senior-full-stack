@@ -243,6 +243,10 @@ export async function requireAdmin(nextPath = "/admin") {
     redirect(`/login?next=${encodeURIComponent(nextPath)}`);
   }
 
+  if (profile.status === "banned") {
+    redirect("/dashboard?error=Account%20blocked.");
+  }
+
   if (profile.role !== "admin") {
     redirect("/dashboard?error=Admin%20access%20required.");
   }
