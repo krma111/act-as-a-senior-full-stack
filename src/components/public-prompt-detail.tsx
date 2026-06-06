@@ -6,26 +6,29 @@ import { CreatorBadge } from "@/components/creator-badge";
 import { MotionMain, MotionSection } from "@/components/motion-primitives";
 import { PromptActions } from "@/components/prompt-actions";
 import { reportPrompt } from "@/lib/actions";
+import { getAuthSessionState } from "@/lib/auth/session";
 import { getPrompt } from "@/lib/data";
 import { creatorSlug } from "@/lib/slugs";
-import { hasSupabaseEnv } from "@/lib/env";
-import { createClient } from "@/lib/supabase/server";
 
 export async function PublicPromptDetail({ idOrSlug, message, error }: { idOrSlug: string; message?: string; error?: string }) {
   const prompt = await getPrompt(idOrSlug);
   if (!prompt) notFound();
 
-  const supabase = hasSupabaseEnv ? await createClient() : null;
-  const {
-    data: { user }
-  } = supabase ? await supabase.auth.getUser() : { data: { user: null } };
+  const { supabase, user } = await getAuthSessionState();
 
-  const { data: favorite } = user && supabase
-    ? await supabase.from("saved_prompts").select("id").eq("prompt_id", prompt.id).eq("user_id", user.id).maybeSingle()
-    : { data: null };
-  const { count: saveCount } = supabase
-    ? await supabase.from("saved_prompts").select("id", { count: "exact", head: true }).eq("prompt_id", prompt.id)
-    : { count: 0 };
+  const { favorite, saveCount } = supabase
+    ? await Promise.all([
+        user
+          ? supabase.from("saved_prompts").select("id").eq("prompt_id", prompt.id).eq("user_id", user.id).maybeSingle()
+          : Promise.resolve({ data: null }),
+        supabase.from("saved_prompts").select("id", { count: "exact", head: true }).eq("prompt_id", prompt.id)
+      ])
+        .then(([favoriteResult, saveResult]) => ({
+          favorite: favoriteResult.data,
+          saveCount: saveResult.count ?? 0
+        }))
+        .catch(() => ({ favorite: null, saveCount: 0 }))
+    : { favorite: null, saveCount: 0 };
 
   const creatorName = prompt.users?.full_name ?? prompt.users?.display_name ?? prompt.users?.email?.split("@")[0] ?? "Creator";
   const creatorHref = `/creator/${prompt.users ? creatorSlug(prompt.users) : prompt.user_id}`;

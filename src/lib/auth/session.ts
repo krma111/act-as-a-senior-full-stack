@@ -105,9 +105,17 @@ export async function getAuthSessionState(): Promise<AuthSessionState> {
   }
 
   const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
+  let user: User | null = null;
+
+  try {
+    const result = await supabase.auth.getUser();
+    if (result.error) {
+      return { supabase, user: null, profile: null };
+    }
+    user = result.data.user;
+  } catch {
+    return { supabase, user: null, profile: null };
+  }
 
   if (!user) {
     return { supabase, user: null, profile: null };

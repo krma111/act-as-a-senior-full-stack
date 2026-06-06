@@ -4,6 +4,13 @@ import { getSupabaseAnonKey, getSupabaseUrl, hasSupabaseEnv } from "@/lib/env";
 
 const authPages = new Set(["/login", "/signup", "/forgot-password"]);
 
+function clearSupabaseCookies(request: NextRequest, response: NextResponse) {
+  request.cookies
+    .getAll()
+    .filter((cookie) => cookie.name.startsWith("sb-"))
+    .forEach((cookie) => response.cookies.delete(cookie.name));
+}
+
 export async function updateSession(request: NextRequest) {
   const fallbackResponse = NextResponse.next({ request });
   if (!hasSupabaseEnv) return fallbackResponse;
@@ -31,10 +38,23 @@ export async function updateSession(request: NextRequest) {
     );
 
     const {
-      data: { user }
+      data: { user },
+      error
     } = await supabase.auth.getUser();
 
     const { pathname, search } = request.nextUrl;
+
+    if (error) {
+      clearSupabaseCookies(request, response);
+      if (pathname.startsWith("/dashboard")) {
+        const loginUrl = request.nextUrl.clone();
+        loginUrl.pathname = "/login";
+        loginUrl.search = "";
+        loginUrl.searchParams.set("next", `${pathname}${search}`);
+        return NextResponse.redirect(loginUrl);
+      }
+      return response;
+    }
 
     if (!user && pathname.startsWith("/dashboard")) {
       const loginUrl = request.nextUrl.clone();
@@ -53,6 +73,7 @@ export async function updateSession(request: NextRequest) {
 
     return response;
   } catch {
+    clearSupabaseCookies(request, fallbackResponse);
     return fallbackResponse;
   }
 }

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import { hasSupabaseEnv } from "@/lib/env";
 import { creatorSlug, slugify } from "@/lib/slugs";
 import type { Category, Profile, Prompt, SiteSettings } from "@/lib/types";
@@ -97,7 +97,8 @@ async function profilesByIds(userIds: string[]) {
   const map = new Map<string, Profile>();
   if (!hasSupabaseEnv || !userIds.length) return map;
 
-  const supabase = await createClient();
+  const supabase = createPublicClient();
+  if (!supabase) return map;
   const uniqueUserIds = Array.from(new Set(userIds));
   const profileResult = await supabase
     .from("profiles")
@@ -125,7 +126,8 @@ async function creatorCopyTotals(userIds: string[]) {
   const totals = new Map<string, number>();
   if (!hasSupabaseEnv || !userIds.length) return totals;
 
-  const supabase = await createClient();
+  const supabase = createPublicClient();
+  if (!supabase) return totals;
   const { data } = await supabase.from("prompts").select("user_id,copy_count").in("user_id", userIds).eq("status", "approved");
 
   for (const row of (data ?? []) as Array<{ user_id: string; copy_count: number | null }>) {
@@ -158,7 +160,23 @@ export async function getSiteSettings(): Promise<SiteSettings> {
     };
   }
 
-  const supabase = await createClient();
+  const supabase = createPublicClient();
+  if (!supabase) {
+    return {
+      id: 1,
+      website_name: "PromptVault",
+      logo_text: "PromptVault",
+      hero_headline: "Discover and share powerful image prompts",
+      hero_subheadline: "Browse approved creator prompts from the live vault.",
+      footer_text: "Copyright 2026 PromptVault. All rights reserved.",
+      admin_email: "",
+      cta_text: "Start exploring prompts",
+      empty_state_title: "No prompts yet",
+      empty_state_message: "Approved prompts will appear here.",
+      featured_prompt_ids: [],
+      trending_prompt_ids: []
+    };
+  }
   const { data } = await supabase.from("site_settings").select("*").eq("id", 1).maybeSingle();
 
   return {
@@ -180,7 +198,8 @@ export async function getSiteSettings(): Promise<SiteSettings> {
 export async function getCategories(): Promise<Category[]> {
   if (!hasSupabaseEnv) return [];
 
-  const supabase = await createClient();
+  const supabase = createPublicClient();
+  if (!supabase) return [];
   const categoryResult = await supabase
     .from("categories")
     .select("id,name,slug,description,sort_order,is_active")
@@ -208,7 +227,8 @@ export async function getPrompts(options?: {
   if (!hasSupabaseEnv) return [];
 
   const search = options?.search ? sanitizeSearch(options.search) : "";
-  const supabase = await createClient();
+  const supabase = createPublicClient();
+  if (!supabase) return [];
   let query = supabase
     .from("prompts")
     .select(promptSelect)
@@ -243,7 +263,8 @@ export async function getPrompts(options?: {
 export async function getPrompt(idOrSlug: string) {
   if (!hasSupabaseEnv) return null;
 
-  const supabase = await createClient();
+  const supabase = createPublicClient();
+  if (!supabase) return null;
   const id = uuidFromSlug(idOrSlug) ?? (isUuid(idOrSlug) ? idOrSlug : null);
 
   if (id) {
@@ -275,7 +296,8 @@ export async function getPrompt(idOrSlug: string) {
 export async function getPromptsByCreator(username: string) {
   if (!hasSupabaseEnv) return { creator: null as Profile | null, prompts: [] as Prompt[] };
 
-  const supabase = await createClient();
+  const supabase = createPublicClient();
+  if (!supabase) return { creator: null as Profile | null, prompts: [] as Prompt[] };
   const profileResult = await supabase
     .from("profiles")
     .select(profileSelect)
@@ -312,7 +334,8 @@ export async function getPromptsByCreator(username: string) {
 export async function getCreatorLeaderboard() {
   if (!hasSupabaseEnv) return [];
 
-  const supabase = await createClient();
+  const supabase = createPublicClient();
+  if (!supabase) return [];
   const { data: rows, error } = await supabase
     .from("prompts")
     .select("user_id,copy_count")
@@ -339,5 +362,3 @@ export async function getCreatorLeaderboard() {
     .sort((a, b) => (b.copy_total ?? 0) - (a.copy_total ?? 0))
     .slice(0, 50);
 }
-
-
