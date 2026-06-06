@@ -1,8 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { CheckCircle2, Trash2, XCircle } from "lucide-react";
+import { AdminTabs } from "@/components/admin-tabs";
 import { AdminSubmitButton } from "@/components/admin-action-button";
 import { AdminFlashToast } from "@/components/admin-flash-toast";
+import { MotionMain, MotionSection } from "@/components/motion-primitives";
 import { approvePack, deletePack, rejectPack } from "@/lib/admin-actions";
 import { getAdminPacks } from "@/lib/admin-data";
 
@@ -29,12 +31,13 @@ export default async function AdminPacksPage({ searchParams }: { searchParams: P
   const { packs, error, activeStatus } = await getAdminPacks(params.status);
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+    <MotionMain className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <AdminTabs active="Packs" />
       <AdminFlashToast message={params.message} error={params.error ?? error ?? undefined} />
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand">Admin console</p>
-          <h1 className="mt-2 text-3xl font-black text-white">Prompt packs</h1>
+          <h1 className="hero-title mt-2 text-3xl font-black">Prompt packs</h1>
           <p className="mt-2 text-sm text-slate-400">Review creator packs. Paid packs require at least 5 prompts before approval.</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -54,14 +57,14 @@ export default async function AdminPacksPage({ searchParams }: { searchParams: P
       )}
 
       {!packs.length ? (
-        <section className="card-surface rounded-[28px] p-10 text-center">
+        <MotionSection className="card-surface rounded-[32px] p-10 text-center">
           <p className="text-xl font-bold text-white">No packs found.</p>
           <p className="mt-2 text-sm text-slate-400">Creator packs will appear here when submitted.</p>
-        </section>
+        </MotionSection>
       ) : (
-        <section className="grid gap-5">
+        <MotionSection className="grid gap-5">
           {packs.map((pack) => (
-            <article key={pack.id} className="card-surface overflow-hidden rounded-[28px]">
+            <article key={pack.id} className="card-surface overflow-hidden rounded-[32px] transition duration-500 hover:-translate-y-1 hover:border-brand/40">
               <div className="grid gap-0 lg:grid-cols-[260px_1fr]">
                 <div className="relative aspect-[4/3] bg-black/40 lg:aspect-auto">
                   {pack.cover_image ? (
@@ -110,8 +113,8 @@ export default async function AdminPacksPage({ searchParams }: { searchParams: P
               </div>
             </article>
           ))}
-        </section>
+        </MotionSection>
       )}
-    </main>
+    </MotionMain>
   );
 }

@@ -8,8 +8,9 @@ export async function PromptGrid({ prompts, empty }: { prompts: Prompt[]; empty:
 
   if (!prompts.length) {
     return (
-      <div className="rounded-lg border border-dashed border-white/15 bg-white/[0.03] p-10 text-center text-slate-400">
-        {empty}
+      <div className="card-surface rounded-[32px] border-dashed p-10 text-center text-slate-400">
+        <p className="text-lg font-bold text-white">Nothing to show yet.</p>
+        <p className="mx-auto mt-2 max-w-xl text-sm leading-6">{empty}</p>
       </div>
     );
   }

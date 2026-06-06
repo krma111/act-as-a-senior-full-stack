@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { ExternalLink, Heart } from "lucide-react";
 import { toast } from "sonner";
 import { toggleFavorite } from "@/lib/actions";
@@ -34,9 +35,11 @@ export function PromptActions({
             setShowCopyTargets(true);
           }}
         />
-        <button
+        <motion.button
           className="btn-ghost"
           disabled={pending}
+          whileHover={pending ? undefined : { y: -2, scale: 1.018 }}
+          whileTap={pending ? undefined : { scale: 0.94 }}
           onClick={() =>
             startTransition(async () => {
               const result = await toggleFavorite(promptId);
@@ -48,14 +51,30 @@ export function PromptActions({
             })
           }
         >
-          <Heart className={`h-4 w-4 ${favorited ? "fill-current text-brand" : ""}`} /> {favorited ? "Favorited" : "Favorite"}
-        </button>
+          <motion.span
+            key={favorited ? "favorited" : "favorite"}
+            initial={{ scale: 0.65, rotate: -12 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: "spring", stiffness: 420, damping: 18 }}
+            className="inline-flex"
+          >
+            <Heart className={`h-4 w-4 ${favorited ? "fill-current text-brand" : ""}`} />
+          </motion.span>
+          {favorited ? "Favorited" : "Favorite"}
+        </motion.button>
         <span className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300">
           Copies: {copyCount}
         </span>
       </div>
-      {showCopyTargets ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-brand/20 bg-brand/10 p-3 text-sm text-slate-200">
+      <AnimatePresence>
+        {showCopyTargets ? (
+        <motion.div
+          className="flex flex-wrap items-center gap-2 rounded-2xl border border-brand/20 bg-brand/10 p-3 text-sm text-slate-200 shadow-glow backdrop-blur-xl"
+          initial={{ opacity: 0, y: -8, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -8, scale: 0.97 }}
+          transition={{ duration: 0.22 }}
+        >
           <span>Open copied prompt in:</span>
           <a className="btn-ghost py-2" href="https://chatgpt.com/" target="_blank" rel="noreferrer">
             ChatGPT <ExternalLink className="h-3.5 w-3.5" />
@@ -63,8 +82,9 @@ export function PromptActions({
           <a className="btn-ghost py-2" href="https://gemini.google.com/" target="_blank" rel="noreferrer">
             Gemini <ExternalLink className="h-3.5 w-3.5" />
           </a>
-        </div>
-      ) : null}
+        </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

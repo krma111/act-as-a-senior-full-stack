@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Boxes, CreditCard, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
 import { AdminTabs } from "@/components/admin-tabs";
+import { MotionMain, MotionSection } from "@/components/motion-primitives";
 import { updateSiteSettings } from "@/lib/admin-actions";
 import { getAdminSiteSettings, getAdminStats, requireAdmin } from "@/lib/admin-data";
 
@@ -25,13 +26,13 @@ export default async function AdminPage({
   const [stats, settings] = await Promise.all([getAdminStats(), getAdminSiteSettings()]);
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+    <MotionMain className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <AdminTabs active="Overview" />
-      <section className="card-surface rounded-[28px] p-6 sm:p-8">
+      <MotionSection className="card-surface rounded-[32px] p-6 sm:p-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand">Admin console</p>
-            <h1 className="mt-2 text-3xl font-black text-white">PromptVault moderation</h1>
+            <h1 className="hero-title mt-2 text-3xl font-black">PromptVault moderation</h1>
             <p className="mt-2 max-w-2xl text-sm text-slate-400">Real production metrics from Supabase. No demo stats or fake moderation data.</p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -59,9 +60,9 @@ export default async function AdminPage({
             {params.error ?? params.message}
           </div>
         )}
-      </section>
+      </MotionSection>
 
-      <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <MotionSection className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total prompts" value={stats.totalPrompts} />
         <StatCard label="Pending" value={stats.pendingPrompts} />
         <StatCard label="Approved" value={stats.approvedPrompts} />
@@ -75,9 +76,9 @@ export default async function AdminPage({
         <StatCard label="Paid packs" value={stats.totalPaidPacks} />
         <StatCard label="Payment requests" value={stats.totalPaymentRequests} />
         <StatCard label="Approved sales" value={stats.totalApprovedSales} />
-      </section>
+      </MotionSection>
 
-      <section className="mt-8 grid gap-5 lg:grid-cols-2">
+      <MotionSection className="mt-8 grid gap-5 lg:grid-cols-2">
         <Link href="/admin/prompts?status=pending" className="card-surface group rounded-[28px] p-6 transition hover:border-brand/40">
           <ShieldCheck className="h-8 w-8 text-brand" />
           <h2 className="mt-4 text-2xl font-bold text-white">Review pending prompts</h2>
@@ -98,9 +99,9 @@ export default async function AdminPage({
           <h2 className="mt-4 text-2xl font-bold text-white">Approve payments</h2>
           <p className="mt-2 text-sm text-slate-400">Review manual payment requests and grant paid pack access.</p>
         </Link>
-      </section>
+      </MotionSection>
 
-      <section className="card-surface mt-8 rounded-[28px] p-6 sm:p-8">
+      <MotionSection className="card-surface mt-8 rounded-[32px] p-6 sm:p-8">
         <div className="mb-5">
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand">Site content</p>
           <h2 className="mt-2 text-2xl font-bold text-white">Edit website text</h2>
@@ -143,7 +144,7 @@ export default async function AdminPage({
             <button className="btn-primary">Save site text</button>
           </div>
         </form>
-      </section>
-    </main>
+      </MotionSection>
+    </MotionMain>
   );
 }

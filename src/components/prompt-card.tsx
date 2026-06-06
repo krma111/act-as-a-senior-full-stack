@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { Edit3, Heart, Sparkles, Trash2 } from "lucide-react";
 import { creatorSlug, promptSlug } from "@/lib/slugs";
 import { CreatorBadge } from "@/components/creator-badge";
@@ -15,7 +16,14 @@ export function PromptCard({ prompt, isAdmin = false }: { prompt: Prompt; isAdmi
   const href = `/prompt/${promptSlug(prompt)}`;
 
   return (
-    <article className="group card-surface overflow-hidden rounded-2xl transition duration-500 hover:-translate-y-2 hover:border-brand/50 hover:shadow-glow">
+    <motion.article
+      className="group card-surface overflow-hidden rounded-[28px] transition duration-500 hover:border-brand/50 hover:shadow-glow"
+      initial={{ opacity: 0, y: 22, scale: 0.985 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
+      whileHover={{ y: -10, rotateX: 1.8, rotateY: -1.8, scale: 1.012 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+    >
       <Link href={href} className="block">
         <div className="relative aspect-[4/3] overflow-hidden bg-slate-950">
           {prompt.image_url ? (
@@ -96,7 +104,7 @@ export function PromptCard({ prompt, isAdmin = false }: { prompt: Prompt; isAdmi
           </div>
         ) : null}
       </div>
-    </article>
+    </motion.article>
   );
 }
 

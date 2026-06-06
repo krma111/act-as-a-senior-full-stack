@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { useFormStatus } from "react-dom";
 
 export function AdminSubmitButton({
@@ -16,14 +17,16 @@ export function AdminSubmitButton({
   const { pending } = useFormStatus();
 
   return (
-    <button
+    <motion.button
       className={className}
       disabled={pending}
+      whileHover={pending ? undefined : { y: -2, scale: 1.015 }}
+      whileTap={pending ? undefined : { scale: 0.965 }}
       onClick={(event) => {
         if (confirm && !window.confirm(confirm)) event.preventDefault();
       }}
     >
       {pending ? pendingText : children}
-    </button>
+    </motion.button>
   );
 }

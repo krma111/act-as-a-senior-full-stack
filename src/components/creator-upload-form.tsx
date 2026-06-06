@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { type FormEvent, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
+import { motion } from "framer-motion";
 import { LoaderCircle, UploadCloud, X } from "lucide-react";
 import { createCreatorPrompt } from "@/lib/creator-actions";
 import { MAX_PROMPT_TAGS, PREDEFINED_PROMPT_TAGS, normalizePromptTag } from "@/lib/prompt-tags";
@@ -24,10 +25,10 @@ function SubmitButton() {
   const { pending } = useFormStatus();
 
   return (
-    <button className="btn-primary min-w-[12rem] justify-center" disabled={pending}>
+    <motion.button className="btn-primary min-w-[12rem] justify-center" disabled={pending} whileHover={pending ? undefined : { y: -2, scale: 1.015 }} whileTap={pending ? undefined : { scale: 0.965 }}>
       {pending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
       {pending ? "Submitting..." : "Submit for approval"}
-    </button>
+    </motion.button>
   );
 }
 
@@ -134,7 +135,14 @@ export function CreatorUploadForm({ message, error }: { message?: string; error?
   const visibleError = clientError ?? error;
 
   return (
-    <form action={createCreatorPrompt} onSubmit={validateBeforeSubmit} className="card-surface grid gap-6 rounded-[28px] p-6 sm:p-8">
+    <motion.form
+      action={createCreatorPrompt}
+      onSubmit={validateBeforeSubmit}
+      className="card-surface grid gap-6 rounded-[32px] p-6 sm:p-8"
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45 }}
+    >
       {message || visibleError ? (
         <div
           className={`rounded-2xl border p-4 text-sm ${
@@ -148,7 +156,7 @@ export function CreatorUploadForm({ message, error }: { message?: string; error?
 
       <label className="block space-y-2">
         <span className="label">Image upload</span>
-        <div className="rounded-3xl border border-dashed border-brand/30 bg-brand/5 p-6">
+        <div className="rounded-3xl border border-dashed border-brand/30 bg-brand/5 p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition duration-300 hover:border-brand/50 hover:bg-brand/10">
           <div className="flex flex-col items-center gap-3 text-center">
             <UploadCloud className="h-8 w-8 text-brand" />
             <p className="text-sm text-slate-300">Upload an optional example image for this prompt. Maximum size: 8 MB.</p>
@@ -183,15 +191,17 @@ export function CreatorUploadForm({ message, error }: { message?: string; error?
         <span className="label">Description optional</span>
         <div className="grid gap-2 sm:grid-cols-2">
           {descriptionTemplates.map((template, index) => (
-            <button
+            <motion.button
               key={template}
               type="button"
               className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 text-left text-xs leading-5 text-slate-300 transition hover:border-brand/40 hover:text-white"
               onClick={() => setDescription(template)}
+              whileHover={{ y: -3, scale: 1.01 }}
+              whileTap={{ scale: 0.97 }}
             >
               <span className="mb-1 block font-bold text-brand">Template {index + 1}</span>
               {template}
-            </button>
+            </motion.button>
           ))}
         </div>
         <textarea
@@ -242,15 +252,17 @@ export function CreatorUploadForm({ message, error }: { message?: string; error?
         {selectedTags.length ? (
           <div className="flex flex-wrap gap-2">
             {selectedTags.map((tag) => (
-              <button
+              <motion.button
                 key={tag}
                 type="button"
                 className="inline-flex items-center gap-1 rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-xs font-semibold text-brand"
                 onClick={() => removeTag(tag)}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.94 }}
               >
                 #{tag}
                 <X className="h-3 w-3" />
-              </button>
+              </motion.button>
             ))}
           </div>
         ) : null}
@@ -273,9 +285,9 @@ export function CreatorUploadForm({ message, error }: { message?: string; error?
         </div>
         <div className="flex max-h-44 flex-wrap gap-2 overflow-y-auto rounded-2xl border border-white/10 bg-white/[0.03] p-3">
           {filteredTags.map((tag) => (
-            <button key={tag} type="button" className="rounded-full bg-white/[0.06] px-3 py-1 text-xs text-slate-300 hover:bg-brand/10 hover:text-brand" onClick={() => addTag(tag)}>
+            <motion.button key={tag} type="button" className="rounded-full bg-white/[0.06] px-3 py-1 text-xs text-slate-300 hover:bg-brand/10 hover:text-brand" onClick={() => addTag(tag)} whileHover={{ y: -1, scale: 1.03 }} whileTap={{ scale: 0.95 }}>
               #{tag}
-            </button>
+            </motion.button>
           ))}
           {!filteredTags.length ? <span className="text-xs text-slate-500">No matching tags. Add a custom tag.</span> : null}
         </div>
@@ -292,6 +304,6 @@ export function CreatorUploadForm({ message, error }: { message?: string; error?
         </Link>
         <SubmitButton />
       </div>
-    </form>
+    </motion.form>
   );
 }

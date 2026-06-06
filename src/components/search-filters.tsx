@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { motion } from "framer-motion";
 import { Search } from "lucide-react";
 import type { Category } from "@/lib/types";
 
@@ -47,7 +48,13 @@ export function SearchFilters({
   }
 
   return (
-    <form className="mx-auto mt-8 max-w-3xl" onSubmit={onSubmit}>
+    <motion.form
+      className="mx-auto mt-8 max-w-3xl"
+      onSubmit={onSubmit}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.38, delay: 0.08 }}
+    >
       <div className="search-shell relative overflow-hidden rounded-2xl border border-brand/20 bg-white/[0.03] p-1 shadow-glow">
         <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
         <input
@@ -59,31 +66,37 @@ export function SearchFilters({
         />
       </div>
       <div className="mt-4 flex flex-wrap justify-center gap-2">
-        <Link className={`btn-ghost ${!activeCategory ? "border-brand/60 text-brand" : ""}`} href={buildUrl({ category: "" })}>
-          All
-        </Link>
-        {categories.map((category) => (
-          <Link
-            key={category.id}
-            className={`btn-ghost ${activeCategory === category.slug ? "border-brand/60 text-brand" : ""}`}
-            href={buildUrl({ category: category.slug })}
-          >
-            {category.name}
+        <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.96 }}>
+          <Link className={`btn-ghost ${!activeCategory ? "border-brand/60 text-brand" : ""}`} href={buildUrl({ category: "" })}>
+            All
           </Link>
+        </motion.div>
+        {categories.map((category) => (
+          <motion.div key={category.id} whileHover={{ y: -2 }} whileTap={{ scale: 0.96 }}>
+            <Link
+              className={`btn-ghost ${activeCategory === category.slug ? "border-brand/60 text-brand" : ""}`}
+              href={buildUrl({ category: category.slug })}
+            >
+              {category.name}
+            </Link>
+          </motion.div>
         ))}
       </div>
       <div className="mt-3 flex flex-wrap justify-center gap-2">
-        <Link className={`btn-ghost ${!activeAspectRatio ? "border-brand/60 text-brand" : ""}`} href={buildUrl({ ratio: "" })}>All Ratios</Link>
+        <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.96 }}>
+          <Link className={`btn-ghost ${!activeAspectRatio ? "border-brand/60 text-brand" : ""}`} href={buildUrl({ ratio: "" })}>All Ratios</Link>
+        </motion.div>
         {aspectRatios.map((ratio) => (
-          <Link
-            key={ratio}
-            className={`btn-ghost ${activeAspectRatio === ratio ? "border-brand/60 text-brand" : ""}`}
-            href={buildUrl({ ratio })}
-          >
-            {ratio}
-          </Link>
+          <motion.div key={ratio} whileHover={{ y: -2 }} whileTap={{ scale: 0.96 }}>
+            <Link
+              className={`btn-ghost ${activeAspectRatio === ratio ? "border-brand/60 text-brand" : ""}`}
+              href={buildUrl({ ratio })}
+            >
+              {ratio}
+            </Link>
+          </motion.div>
         ))}
       </div>
-    </form>
+    </motion.form>
   );
 }

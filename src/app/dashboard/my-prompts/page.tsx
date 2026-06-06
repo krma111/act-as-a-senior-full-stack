@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Edit3, PlusCircle } from "lucide-react";
+import { MotionMain, MotionSection } from "@/components/motion-primitives";
 import { getMyPrompts } from "@/lib/creator-data";
 
 export const dynamic = "force-dynamic";
@@ -28,11 +29,11 @@ export default async function MyPromptsPage({
   const { prompts, error } = await getMyPrompts();
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+    <MotionMain className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand">Creator library</p>
-          <h1 className="mt-2 text-3xl font-black text-white">My prompts</h1>
+          <h1 className="hero-title mt-2 text-3xl font-black">My prompts</h1>
           <p className="mt-2 text-sm text-slate-400">Only prompts submitted from your logged-in account are shown here.</p>
         </div>
         <Link href="/dashboard/upload" className="btn-primary">
@@ -53,17 +54,17 @@ export default async function MyPromptsPage({
       )}
 
       {!prompts.length ? (
-        <section className="card-surface rounded-[28px] p-10 text-center">
+        <MotionSection className="card-surface rounded-[32px] p-10 text-center">
           <p className="text-xl font-bold text-white">No data yet. Start creating your first prompt.</p>
           <p className="mx-auto mt-3 max-w-xl text-sm text-slate-400">Your submitted prompts will appear here with approval status, edit controls, and performance counts.</p>
           <div className="mt-6">
             <Link href="/dashboard/upload" className="btn-primary">Upload first prompt</Link>
           </div>
-        </section>
+        </MotionSection>
       ) : (
-        <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <MotionSection className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {prompts.map((prompt) => (
-            <article key={prompt.id} className="card-surface overflow-hidden rounded-[28px]">
+            <article key={prompt.id} className="card-surface overflow-hidden rounded-[32px] transition duration-500 hover:-translate-y-1 hover:border-brand/40">
               <div className="relative aspect-[4/3] bg-black/40">
                 {prompt.image_url ? (
                   <Image src={prompt.image_url} alt={prompt.title} fill className="object-cover" sizes="(min-width:1280px) 33vw, (min-width:768px) 50vw, 100vw" />
@@ -98,8 +99,8 @@ export default async function MyPromptsPage({
               </div>
             </article>
           ))}
-        </section>
+        </MotionSection>
       )}
-    </main>
+    </MotionMain>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { Github, LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
 import { getClientAuthErrorMessage } from "@/lib/auth/client-errors";
@@ -69,20 +70,29 @@ export function OAuthButtons({
 
   return (
     <div className="grid gap-3">
-      <button
+      <motion.button
         type="button"
         className="btn-ghost w-full justify-center py-3"
         onClick={() => signIn("google")}
         disabled={disabled || activeProvider !== null}
+        whileHover={disabled || activeProvider !== null ? undefined : { y: -2, scale: 1.012 }}
+        whileTap={disabled || activeProvider !== null ? undefined : { scale: 0.965 }}
       >
         {activeProvider === "google" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <GoogleIcon />}
         {activeProvider === "google" ? "Opening Google..." : "Continue with Google"}
-      </button>
+      </motion.button>
       {isGithubOAuthEnabled ? (
-        <button type="button" className="btn-ghost w-full justify-center py-3" onClick={() => signIn("github")} disabled={disabled || activeProvider !== null}>
+        <motion.button
+          type="button"
+          className="btn-ghost w-full justify-center py-3"
+          onClick={() => signIn("github")}
+          disabled={disabled || activeProvider !== null}
+          whileHover={disabled || activeProvider !== null ? undefined : { y: -2, scale: 1.012 }}
+          whileTap={disabled || activeProvider !== null ? undefined : { scale: 0.965 }}
+        >
           {activeProvider === "github" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Github className="h-4 w-4" />}
           Continue with GitHub
-        </button>
+        </motion.button>
       ) : null}
     </div>
   );

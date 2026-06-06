@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
 import { CheckCircle2, ExternalLink, Mail, Sparkles, UserRound } from "lucide-react";
+import { MotionMain, MotionSection } from "@/components/motion-primitives";
 import { logout, updateOwnProfile } from "@/lib/auth/actions";
 import { getAuthSessionState, getSavedPromptsForDashboard } from "@/lib/auth/session";
 
@@ -39,8 +40,8 @@ export default async function DashboardPage({
 
   if (profile.status === "banned") {
     return (
-      <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
-        <section className="card-surface rounded-[28px] p-8 text-center">
+      <MotionMain className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+        <MotionSection className="card-surface rounded-[32px] p-8 text-center">
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-red-200">Account blocked</p>
           <h1 className="mt-3 text-3xl font-black text-white">Your account is currently banned.</h1>
           <p className="mt-3 text-sm leading-6 text-slate-400">
@@ -49,8 +50,8 @@ export default async function DashboardPage({
           <form action={logout} className="mt-6">
             <button className="btn-primary">Log out</button>
           </form>
-        </section>
-      </main>
+        </MotionSection>
+      </MotionMain>
     );
   }
 
@@ -59,8 +60,8 @@ export default async function DashboardPage({
   const avatarUrl = profile.avatar_url ?? (typeof user.user_metadata?.avatar_url === "string" ? user.user_metadata.avatar_url : null);
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      <section className="card-surface rounded-[28px] p-6 sm:p-8">
+    <MotionMain className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <MotionSection className="card-surface rounded-[32px] p-6 sm:p-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex items-start gap-4">
             {avatarUrl ? (
@@ -122,10 +123,10 @@ export default async function DashboardPage({
             <p className="mt-3 text-xl font-bold text-white">{user.email_confirmed_at ? "Active" : "Verify email"}</p>
           </div>
         </div>
-      </section>
+      </MotionSection>
 
-      <section className="mt-8 grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
-        <div className="card-surface rounded-[28px] p-6">
+      <MotionSection className="mt-8 grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="card-surface rounded-[32px] p-6">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.22em] text-brand">Profile</p>
             <h2 className="mt-2 text-2xl font-bold text-white">Update your account</h2>
@@ -145,7 +146,7 @@ export default async function DashboardPage({
           </form>
         </div>
 
-        <div className="card-surface rounded-[28px] p-6">
+        <div className="card-surface rounded-[32px] p-6">
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-brand">Your vault</p>
@@ -166,7 +167,7 @@ export default async function DashboardPage({
           ) : (
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               {savedPrompts.map((prompt) => (
-                <Link key={prompt.id} href={prompt.href} className="group card-surface overflow-hidden rounded-[24px]">
+                <Link key={prompt.id} href={prompt.href} className="group card-surface overflow-hidden rounded-[24px] transition duration-500 hover:-translate-y-1 hover:border-brand/40">
                   <div className="aspect-[4/3] overflow-hidden bg-black/30">
                     <Image src={prompt.image_url} alt={prompt.title} width={640} height={480} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
                   </div>
@@ -193,7 +194,7 @@ export default async function DashboardPage({
             </div>
           )}
         </div>
-      </section>
-    </main>
+      </MotionSection>
+    </MotionMain>
   );
 }
