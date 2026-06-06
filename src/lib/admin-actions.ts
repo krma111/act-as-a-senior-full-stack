@@ -56,6 +56,62 @@ function cleanMoney(value: string) {
   return Number.isFinite(amount) && amount >= 0 ? amount : 0;
 }
 
+function cleanInteger(value: string) {
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount >= 0 ? Math.floor(amount) : 0;
+}
+
+function slugFrom(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}
+
+async function logAdminAction(
+  supabase: AdminSupabase,
+  adminUserId: string,
+  actionType: string,
+  targetTable: string,
+  targetId: string,
+  oldValue: unknown,
+  newValue: unknown
+) {
+  await supabase.from("admin_logs").insert({
+    admin_user_id: adminUserId,
+    action_type: actionType,
+    target_table: targetTable,
+    target_id: targetId,
+    old_value: oldValue ?? null,
+    new_value: newValue ?? null
+  });
+}
+
+async function readPromptSnapshot(supabase: AdminSupabase, id: string) {
+  const { data } = await supabase.from("prompts").select("*").eq("id", id).maybeSingle();
+  return data ?? null;
+}
+
+async function uploadAdminPromptImage(supabase: AdminSupabase, formData: FormData, promptId: string) {
+  const file = formData.get("image_file");
+  if (!(file instanceof File) || file.size === 0) return null;
+  if (!file.type.startsWith("image/")) return { error: "Uploaded file must be an image.", url: null };
+  if (file.size > 8 * 1024 * 1024) return { error: "Image upload must be 8MB or smaller.", url: null };
+
+  const ext = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+  const path = `admin/${promptId}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from("prompt-images").upload(path, file, {
+    contentType: file.type,
+    upsert: false
+  });
+
+  if (error) return { error: error.message, url: null };
+  const { data } = supabase.storage.from("prompt-images").getPublicUrl(path);
+  return { error: null, url: data.publicUrl };
+}
+
 function validatePrompt(formData: FormData) {
   const title = asString(formData, "title");
   const promptText = asString(formData, "prompt_text");
@@ -114,11 +170,12 @@ async function notifyPromptRejected(supabase: AdminSupabase, prompt: ModeratedPr
 }
 
 export async function approvePrompt(formData: FormData) {
-  const { supabase } = await requireAdmin("/admin/prompts");
+  const { supabase, user } = await requireAdmin("/admin/prompts");
   const id = asString(formData, "id");
+  const oldValue = await readPromptSnapshot(supabase, id);
   const { error } = await supabase
     .from("prompts")
-    .update({ status: "approved", rejection_reason: null, updated_at: new Date().toISOString() })
+    .update({ status: "approved", rejection_reason: null, deleted_at: null, deleted_by: null, updated_at: new Date().toISOString() })
     .eq("id", id);
 
   if (error) redirectWithMessage("/admin/prompts", "error", error.message);
@@ -127,6 +184,7 @@ export async function approvePrompt(formData: FormData) {
   if (prompt) {
     await notifyPromptApproved(supabase, prompt);
   }
+  await logAdminAction(supabase, user.id, "prompt_approved", "prompts", id, oldValue, { status: "approved" });
 
   revalidatePath("/");
   revalidatePath("/admin");
@@ -135,11 +193,12 @@ export async function approvePrompt(formData: FormData) {
 }
 
 export async function rejectPrompt(formData: FormData) {
-  const { supabase } = await requireAdmin("/admin/prompts");
+  const { supabase, user } = await requireAdmin("/admin/prompts");
   const id = asString(formData, "id");
   const reason = asString(formData, "rejection_reason");
   if (reason.length < 3) redirectWithMessage("/admin/prompts", "error", "Rejection reason is required.");
 
+  const oldValue = await readPromptSnapshot(supabase, id);
   const { data: prompt } = await supabase.from("prompts").select("id,title,user_id").eq("id", id).maybeSingle();
   const { error } = await supabase
     .from("prompts")
@@ -148,6 +207,7 @@ export async function rejectPrompt(formData: FormData) {
 
   if (error) redirectWithMessage("/admin/prompts", "error", error.message);
   if (prompt) await notifyPromptRejected(supabase, prompt, reason);
+  await logAdminAction(supabase, user.id, "prompt_rejected", "prompts", id, oldValue, { status: "rejected", rejection_reason: reason });
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath("/admin/prompts");
@@ -155,24 +215,45 @@ export async function rejectPrompt(formData: FormData) {
 }
 
 export async function deletePrompt(formData: FormData) {
-  const { supabase } = await requireAdmin("/admin/prompts");
+  const { supabase, user } = await requireAdmin("/admin/prompts");
   const id = asString(formData, "id");
-  const { error } = await supabase.from("prompts").delete().eq("id", id);
+  const oldValue = await readPromptSnapshot(supabase, id);
+  const { error } = await supabase
+    .from("prompts")
+    .update({ deleted_at: new Date().toISOString(), deleted_by: user.id, featured: false, updated_at: new Date().toISOString() })
+    .eq("id", id);
 
   if (error) redirectWithMessage("/admin/prompts", "error", error.message);
+  await logAdminAction(supabase, user.id, "prompt_deleted", "prompts", id, oldValue, { deleted_at: "now", deleted_by: user.id });
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath("/admin/prompts");
   redirectWithMessage("/admin/prompts", "message", "Prompt deleted.");
 }
 
+export async function restorePrompt(formData: FormData) {
+  const { supabase, user } = await requireAdmin("/admin/prompts");
+  const id = asString(formData, "id");
+  const oldValue = await readPromptSnapshot(supabase, id);
+  const { error } = await supabase.from("prompts").update({ deleted_at: null, deleted_by: null, updated_at: new Date().toISOString() }).eq("id", id);
+
+  if (error) redirectWithMessage("/admin/prompts", "error", error.message);
+  await logAdminAction(supabase, user.id, "prompt_restored", "prompts", id, oldValue, { deleted_at: null, deleted_by: null });
+  revalidatePath("/");
+  revalidatePath("/admin");
+  revalidatePath("/admin/prompts");
+  redirectWithMessage("/admin/prompts?status=deleted", "message", "Prompt restored.");
+}
+
 export async function toggleFeaturedPrompt(formData: FormData) {
-  const { supabase } = await requireAdmin("/admin/prompts");
+  const { supabase, user } = await requireAdmin("/admin/prompts");
   const id = asString(formData, "id");
   const featured = asBoolean(formData, "featured");
+  const oldValue = await readPromptSnapshot(supabase, id);
   const { error } = await supabase.from("prompts").update({ featured, updated_at: new Date().toISOString() }).eq("id", id);
 
   if (error) redirectWithMessage("/admin/prompts", "error", error.message);
+  await logAdminAction(supabase, user.id, featured ? "prompt_featured" : "prompt_unfeatured", "prompts", id, oldValue, { featured });
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath("/admin/prompts");
@@ -186,10 +267,13 @@ export async function updateAdminPrompt(formData: FormData) {
   if (!id) redirectWithMessage("/admin/prompts", "error", "Prompt not found.");
   if (validationError) redirectWithMessage(errorPath, "error", validationError);
 
-  const { supabase } = await requireAdmin(errorPath);
+  const { supabase, user } = await requireAdmin(errorPath);
   const status = cleanStatus(asString(formData, "status"));
   const rejectionReason = status === "rejected" ? asString(formData, "rejection_reason") || "Rejected by admin." : null;
-  const { data: currentPrompt } = await supabase.from("prompts").select("id,title,user_id,status").eq("id", id).maybeSingle();
+  const imageUpload = await uploadAdminPromptImage(supabase, formData, id);
+  if (imageUpload?.error) redirectWithMessage(errorPath, "error", imageUpload.error);
+  const currentPrompt = await readPromptSnapshot(supabase, id);
+  const imageUrl = imageUpload?.url ?? (asString(formData, "image_url") || null);
   const { error } = await supabase
     .from("prompts")
     .update({
@@ -197,7 +281,8 @@ export async function updateAdminPrompt(formData: FormData) {
       description: asString(formData, "description") || null,
       prompt_text: asString(formData, "prompt_text"),
       negative_prompt: asString(formData, "negative_prompt") || null,
-      image_url: asString(formData, "image_url") || null,
+      image_url: imageUrl,
+      creator_name: asString(formData, "creator_name") || null,
       category: asString(formData, "category").toLowerCase(),
       tags: tagsFrom(asString(formData, "tags")),
       ai_model: asString(formData, "ai_model"),
@@ -207,20 +292,27 @@ export async function updateAdminPrompt(formData: FormData) {
       rejection_reason: rejectionReason,
       featured: asBoolean(formData, "featured"),
       price: cleanMoney(asString(formData, "price")),
+      copy_count: cleanInteger(asString(formData, "copy_count")),
+      save_count: cleanInteger(asString(formData, "save_count")),
       updated_at: new Date().toISOString()
     })
     .eq("id", id);
 
   if (error) redirectWithMessage(errorPath, "error", error.message);
-  if (currentPrompt && currentPrompt.status !== status) {
+  if (currentPrompt && "status" in currentPrompt && currentPrompt.status !== status) {
     const prompt = {
-      id: currentPrompt.id,
+      id,
       title: asString(formData, "title"),
-      user_id: currentPrompt.user_id
+      user_id: String(currentPrompt.user_id)
     };
     if (status === "approved") await notifyPromptApproved(supabase, prompt);
     if (status === "rejected") await notifyPromptRejected(supabase, prompt, rejectionReason ?? "Rejected by admin.");
   }
+  await logAdminAction(supabase, user.id, "prompt_updated", "prompts", id, currentPrompt, {
+    title: asString(formData, "title"),
+    status,
+    featured: asBoolean(formData, "featured")
+  });
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath("/admin/prompts");
@@ -239,9 +331,11 @@ export async function updateUserRole(formData: FormData) {
     redirectWithMessage("/admin/users", "error", "You cannot remove the last admin account.");
   }
 
+  const { data: oldValue } = await supabase.from("profiles").select("*").eq("id", id).maybeSingle();
   const { error } = await supabase.from("profiles").update({ role, updated_at: new Date().toISOString() }).eq("id", id);
 
   if (error) redirectWithMessage("/admin/users", "error", error.message);
+  await logAdminAction(supabase, currentUser.id, "user_role_changed", "profiles", id, oldValue, { role });
   revalidatePath("/admin");
   revalidatePath("/admin/users");
   redirectWithMessage("/admin/users", "message", "User role updated.");
@@ -255,6 +349,7 @@ export async function updateUserBadge(formData: FormData) {
 
   if (!id) redirectWithMessage("/admin/users", "error", "User not found.");
 
+  const { data: oldValue } = await supabase.from("profiles").select("*").eq("id", id).maybeSingle();
   const { error } = await supabase
     .from("profiles")
     .update({
@@ -267,14 +362,41 @@ export async function updateUserBadge(formData: FormData) {
     .eq("id", id);
 
   if (error) redirectWithMessage("/admin/users", "error", error.message);
+  await logAdminAction(supabase, currentUser.id, manualOverride ? "creator_crown_assigned" : "creator_crown_removed", "profiles", id, oldValue, {
+    manual_badge_override: manualOverride,
+    manual_badge_type: badgeType
+  });
   revalidatePath("/");
   revalidatePath("/admin");
   revalidatePath("/admin/users");
   redirectWithMessage("/admin/users", "message", manualOverride ? "Creator crown updated." : "Manual crown override removed.");
 }
 
+export async function updateUserBan(formData: FormData) {
+  const { supabase, user: currentUser } = await requireAdmin("/admin/users");
+  const id = asString(formData, "id");
+  const shouldBan = asBoolean(formData, "ban");
+  const reason = asString(formData, "ban_reason") || null;
+
+  if (!id) redirectWithMessage("/admin/users", "error", "User not found.");
+  if (id === currentUser.id && shouldBan) redirectWithMessage("/admin/users", "error", "You cannot ban your own admin account.");
+
+  const { data: oldValue } = await supabase.from("profiles").select("*").eq("id", id).maybeSingle();
+  const payload = shouldBan
+    ? { status: "banned", banned_at: new Date().toISOString(), banned_by: currentUser.id, ban_reason: reason, updated_at: new Date().toISOString() }
+    : { status: "active", banned_at: null, banned_by: null, ban_reason: null, updated_at: new Date().toISOString() };
+
+  const { error } = await supabase.from("profiles").update(payload).eq("id", id);
+  if (error) redirectWithMessage("/admin/users", "error", error.message);
+  await logAdminAction(supabase, currentUser.id, shouldBan ? "user_banned" : "user_unbanned", "profiles", id, oldValue, payload);
+  revalidatePath("/admin");
+  revalidatePath("/admin/users");
+  redirectWithMessage("/admin/users", "message", shouldBan ? "User banned." : "User unbanned.");
+}
+
 export async function updateSiteSettings(formData: FormData) {
-  const { supabase } = await requireAdmin("/admin");
+  const { supabase, user } = await requireAdmin("/admin/settings");
+  const { data: oldValue } = await supabase.from("site_settings").select("*").eq("id", 1).maybeSingle();
   const payload = {
     id: 1,
     website_name: asString(formData, "website_name") || "PromptVault",
@@ -282,20 +404,110 @@ export async function updateSiteSettings(formData: FormData) {
     hero_headline: asString(formData, "hero_headline") || "Discover and share powerful AI image prompts",
     hero_subheadline: asString(formData, "hero_subheadline") || "Browse battle-tested prompts, save favorites, and publish your best image generations.",
     footer_text: asString(formData, "footer_text") || "Copyright 2026 PromptVault. All rights reserved.",
+    cta_text: asString(formData, "cta_text") || "Start exploring prompts",
+    empty_state_title: asString(formData, "empty_state_title") || "No prompts yet",
+    empty_state_message: asString(formData, "empty_state_message") || "Approved prompts will appear here.",
     updated_at: new Date().toISOString()
   };
 
   const { error } = await supabase.from("site_settings").upsert(payload, { onConflict: "id" });
 
-  if (error) redirectWithMessage("/admin", "error", error.message);
+  if (error) redirectWithMessage("/admin/settings", "error", error.message);
+  await logAdminAction(supabase, user.id, "settings_updated", "site_settings", "1", oldValue, payload);
   revalidatePath("/");
   revalidatePath("/admin");
-  redirectWithMessage("/admin", "message", "Site content updated.");
+  revalidatePath("/admin/settings");
+  redirectWithMessage("/admin/settings", "message", "Site content updated.");
+}
+
+export async function upsertCategory(formData: FormData) {
+  const { supabase, user } = await requireAdmin("/admin/categories");
+  const id = asString(formData, "id");
+  const name = asString(formData, "name");
+  const slug = slugFrom(asString(formData, "slug") || name);
+  const payload = {
+    name,
+    slug,
+    description: asString(formData, "description") || null,
+    sort_order: cleanInteger(asString(formData, "sort_order")),
+    is_active: asBoolean(formData, "is_active"),
+    updated_at: new Date().toISOString()
+  };
+
+  if (name.length < 2) redirectWithMessage("/admin/categories", "error", "Category name is required.");
+  if (!slug) redirectWithMessage("/admin/categories", "error", "Category slug is required.");
+
+  const { data: oldValue } = id ? await supabase.from("categories").select("*").eq("id", id).maybeSingle() : { data: null };
+  const result = id
+    ? await supabase.from("categories").update(payload).eq("id", id).select("id").maybeSingle()
+    : await supabase.from("categories").insert({ ...payload, created_at: new Date().toISOString() }).select("id").maybeSingle();
+
+  if (result.error) redirectWithMessage("/admin/categories", "error", result.error.message);
+  await logAdminAction(supabase, user.id, id ? "category_updated" : "category_created", "categories", result.data?.id ?? id, oldValue, payload);
+  revalidatePath("/");
+  revalidatePath("/admin/categories");
+  redirectWithMessage("/admin/categories", "message", id ? "Category updated." : "Category created.");
+}
+
+export async function toggleCategory(formData: FormData) {
+  const { supabase, user } = await requireAdmin("/admin/categories");
+  const id = asString(formData, "id");
+  const isActive = asBoolean(formData, "is_active");
+  const { data: oldValue } = await supabase.from("categories").select("*").eq("id", id).maybeSingle();
+  const { error } = await supabase.from("categories").update({ is_active: isActive, updated_at: new Date().toISOString() }).eq("id", id);
+
+  if (error) redirectWithMessage("/admin/categories", "error", error.message);
+  await logAdminAction(supabase, user.id, isActive ? "category_restored" : "category_disabled", "categories", id, oldValue, { is_active: isActive });
+  revalidatePath("/");
+  revalidatePath("/admin/categories");
+  redirectWithMessage("/admin/categories", "message", isActive ? "Category restored." : "Category disabled.");
+}
+
+export async function upsertTag(formData: FormData) {
+  const { supabase, user } = await requireAdmin("/admin/tags");
+  const id = asString(formData, "id");
+  const name = asString(formData, "name").toLowerCase();
+  const slug = slugFrom(asString(formData, "slug") || name);
+  const payload = {
+    name,
+    slug,
+    description: asString(formData, "description") || null,
+    is_active: asBoolean(formData, "is_active"),
+    updated_at: new Date().toISOString()
+  };
+
+  if (name.length < 2) redirectWithMessage("/admin/tags", "error", "Tag name is required.");
+  if (!slug) redirectWithMessage("/admin/tags", "error", "Tag slug is required.");
+
+  const { data: oldValue } = id ? await supabase.from("tags").select("*").eq("id", id).maybeSingle() : { data: null };
+  const result = id
+    ? await supabase.from("tags").update(payload).eq("id", id).select("id").maybeSingle()
+    : await supabase.from("tags").insert({ ...payload, created_at: new Date().toISOString() }).select("id").maybeSingle();
+
+  if (result.error) redirectWithMessage("/admin/tags", "error", result.error.message);
+  await logAdminAction(supabase, user.id, id ? "tag_updated" : "tag_created", "tags", result.data?.id ?? id, oldValue, payload);
+  revalidatePath("/");
+  revalidatePath("/admin/tags");
+  redirectWithMessage("/admin/tags", "message", id ? "Tag updated." : "Tag created.");
+}
+
+export async function toggleTag(formData: FormData) {
+  const { supabase, user } = await requireAdmin("/admin/tags");
+  const id = asString(formData, "id");
+  const isActive = asBoolean(formData, "is_active");
+  const { data: oldValue } = await supabase.from("tags").select("*").eq("id", id).maybeSingle();
+  const { error } = await supabase.from("tags").update({ is_active: isActive, updated_at: new Date().toISOString() }).eq("id", id);
+
+  if (error) redirectWithMessage("/admin/tags", "error", error.message);
+  await logAdminAction(supabase, user.id, isActive ? "tag_restored" : "tag_disabled", "tags", id, oldValue, { is_active: isActive });
+  revalidatePath("/");
+  revalidatePath("/admin/tags");
+  redirectWithMessage("/admin/tags", "message", isActive ? "Tag restored." : "Tag disabled.");
 }
 
 
 export async function approvePack(formData: FormData) {
-  const { supabase } = await requireAdmin("/admin/packs");
+  const { supabase, user } = await requireAdmin("/admin/packs");
   const id = asString(formData, "id");
 
   if (!id) redirectWithMessage("/admin/packs", "error", "Pack not found.");
@@ -319,37 +531,42 @@ export async function approvePack(formData: FormData) {
     .eq("id", id);
 
   if (error) redirectWithMessage("/admin/packs", "error", error.message);
+  await logAdminAction(supabase, user.id, "pack_approved", "prompt_packs", id, pack, { status: "approved" });
   revalidatePath("/admin");
   revalidatePath("/admin/packs");
   redirectWithMessage("/admin/packs", "message", "Pack approved.");
 }
 
 export async function rejectPack(formData: FormData) {
-  const { supabase } = await requireAdmin("/admin/packs");
+  const { supabase, user } = await requireAdmin("/admin/packs");
   const id = asString(formData, "id");
   const reason = asString(formData, "rejection_reason") || "Rejected by admin.";
 
   if (!id) redirectWithMessage("/admin/packs", "error", "Pack not found.");
 
+  const { data: oldValue } = await supabase.from("prompt_packs").select("*").eq("id", id).maybeSingle();
   const { error } = await supabase
     .from("prompt_packs")
     .update({ status: "rejected", rejection_reason: reason, updated_at: new Date().toISOString() })
     .eq("id", id);
 
   if (error) redirectWithMessage("/admin/packs", "error", error.message);
+  await logAdminAction(supabase, user.id, "pack_rejected", "prompt_packs", id, oldValue, { status: "rejected", rejection_reason: reason });
   revalidatePath("/admin");
   revalidatePath("/admin/packs");
   redirectWithMessage("/admin/packs", "message", "Pack rejected.");
 }
 
 export async function deletePack(formData: FormData) {
-  const { supabase } = await requireAdmin("/admin/packs");
+  const { supabase, user } = await requireAdmin("/admin/packs");
   const id = asString(formData, "id");
   if (!id) redirectWithMessage("/admin/packs", "error", "Pack not found.");
 
+  const { data: oldValue } = await supabase.from("prompt_packs").select("*").eq("id", id).maybeSingle();
   const { error } = await supabase.from("prompt_packs").delete().eq("id", id);
 
   if (error) redirectWithMessage("/admin/packs", "error", error.message);
+  await logAdminAction(supabase, user.id, "pack_deleted", "prompt_packs", id, oldValue, null);
   revalidatePath("/admin");
   revalidatePath("/admin/packs");
   redirectWithMessage("/admin/packs", "message", "Pack deleted.");
@@ -389,6 +606,7 @@ export async function approvePaymentRequest(formData: FormData) {
     .eq("id", id);
 
   if (error) redirectWithMessage("/admin/payments", "error", error.message);
+  await logAdminAction(supabase, user.id, "payment_approved", "payment_requests", id, request, { status: "approved", pack_id: request.pack_id, user_id: request.user_id });
   revalidatePath("/admin");
   revalidatePath("/admin/payments");
   redirectWithMessage("/admin/payments", "message", "Payment approved and pack access granted.");
@@ -406,6 +624,7 @@ export async function rejectPaymentRequest(formData: FormData) {
     .eq("id", id);
 
   if (error) redirectWithMessage("/admin/payments", "error", error.message);
+  await logAdminAction(supabase, user.id, "payment_rejected", "payment_requests", id, null, { status: "rejected", rejection_reason: reason });
   revalidatePath("/admin");
   revalidatePath("/admin/payments");
   redirectWithMessage("/admin/payments", "message", "Payment request rejected.");

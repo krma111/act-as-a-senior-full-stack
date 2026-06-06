@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
+import { AdminTabs } from "@/components/admin-tabs";
 import { CreatorBadge } from "@/components/creator-badge";
-import { updateUserBadge, updateUserRole } from "@/lib/admin-actions";
+import { updateUserBadge, updateUserBan, updateUserRole } from "@/lib/admin-actions";
 import { getAdminUsers } from "@/lib/admin-data";
 import { creatorBadges, resolveCreatorBadge } from "@/lib/creator-badges";
 
@@ -36,6 +37,7 @@ export default async function AdminUsersPage({
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <AdminTabs active="Users" />
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand">Admin console</p>
@@ -77,6 +79,9 @@ export default async function AdminUsersPage({
                       <span>Joined {formatDate(user.created_at)}</span>
                       <span>Copies {user.copy_total ?? 0}</span>
                       <span>Prompts {user.prompt_count ?? 0}</span>
+                      <span className={user.status === "banned" ? "rounded-full bg-red-500/10 px-2 py-1 text-red-100" : "rounded-full bg-brand/10 px-2 py-1 text-brand"}>
+                        {user.status ?? "active"}
+                      </span>
                       <CreatorBadge profile={user} compact hideEmpty={false} />
                       <span>{user.manual_badge_override ? "manual crown" : `auto crown: ${currentBadge.shortLabel}`}</span>
                     </div>
@@ -104,6 +109,19 @@ export default async function AdminUsersPage({
                     </select>
                     <button className="btn-ghost">Update crown</button>
                   </form>
+                  <form action={updateUserBan} className="flex flex-wrap items-center gap-3">
+                    <input type="hidden" name="id" value={user.id} />
+                    <input type="hidden" name="ban" value={String(user.status !== "banned")} />
+                    {user.status === "banned" ? null : (
+                      <input className="field min-w-[220px]" name="ban_reason" placeholder="Ban reason optional" />
+                    )}
+                    <button className={user.status === "banned" ? "btn-primary" : "btn-ghost text-red-100"}>
+                      {user.status === "banned" ? "Unban user" : "Ban user"}
+                    </button>
+                  </form>
+                  <Link href={`/admin/prompts?user=${user.id}`} className="text-sm font-semibold text-brand hover:text-white">
+                    View submissions
+                  </Link>
                 </div>
               </div>
             </article>

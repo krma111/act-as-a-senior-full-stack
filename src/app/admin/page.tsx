@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Boxes, CreditCard, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
+import { AdminTabs } from "@/components/admin-tabs";
 import { updateSiteSettings } from "@/lib/admin-actions";
 import { getAdminSiteSettings, getAdminStats, requireAdmin } from "@/lib/admin-data";
 
@@ -25,6 +26,7 @@ export default async function AdminPage({
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <AdminTabs active="Overview" />
       <section className="card-surface rounded-[28px] p-6 sm:p-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -65,6 +67,7 @@ export default async function AdminPage({
         <StatCard label="Approved" value={stats.approvedPrompts} />
         <StatCard label="Rejected" value={stats.rejectedPrompts} />
         <StatCard label="Featured" value={stats.featuredPrompts} />
+        <StatCard label="Deleted" value={stats.deletedPrompts} />
         <StatCard label="Users" value={stats.totalUsers} />
         <StatCard label="Creators" value={stats.totalCreators} />
         <StatCard label="Copies" value={stats.totalCopies} />
@@ -123,6 +126,18 @@ export default async function AdminPage({
           <label className="block space-y-2">
             <span className="label">Footer text</span>
             <input className="field" name="footer_text" defaultValue={settings.footer_text} required />
+          </label>
+          <label className="block space-y-2">
+            <span className="label">CTA text</span>
+            <input className="field" name="cta_text" defaultValue={settings.cta_text} required />
+          </label>
+          <label className="block space-y-2">
+            <span className="label">Empty state title</span>
+            <input className="field" name="empty_state_title" defaultValue={settings.empty_state_title} required />
+          </label>
+          <label className="block space-y-2">
+            <span className="label">Empty state message</span>
+            <input className="field" name="empty_state_message" defaultValue={settings.empty_state_message} required />
           </label>
           <div>
             <button className="btn-primary">Save site text</button>

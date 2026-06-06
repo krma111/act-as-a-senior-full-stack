@@ -1,6 +1,7 @@
-import Image from "next/image";
+﻿import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AdminTabs } from "@/components/admin-tabs";
 import { updateAdminPrompt } from "@/lib/admin-actions";
 import { getAdminPromptById } from "@/lib/admin-data";
 
@@ -24,6 +25,7 @@ export default async function AdminEditPromptPage({
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
+      <AdminTabs active="Prompts" />
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand">Admin console</p>
@@ -53,6 +55,11 @@ export default async function AdminEditPromptPage({
               )}
             </div>
             <label className="block space-y-2">
+              <span className="label">Replace image upload optional</span>
+              <input className="field" name="image_file" type="file" accept="image/*" />
+              <span className="text-xs text-slate-500">Maximum 8MB. Upload overrides the URL below.</span>
+            </label>
+            <label className="block space-y-2">
               <span className="label">Image URL optional</span>
               <input className="field" name="image_url" type="url" defaultValue={prompt.image_url ?? ""} />
             </label>
@@ -62,6 +69,10 @@ export default async function AdminEditPromptPage({
             <label className="block space-y-2">
               <span className="label">Title</span>
               <input className="field" name="title" required minLength={3} maxLength={160} defaultValue={prompt.title} />
+            </label>
+            <label className="block space-y-2">
+              <span className="label">Creator display name override</span>
+              <input className="field" name="creator_name" defaultValue={prompt.creator_name_override ?? ""} placeholder={prompt.creator_name ?? "Creator"} />
             </label>
             <label className="block space-y-2">
               <span className="label">Description</span>
@@ -89,7 +100,7 @@ export default async function AdminEditPromptPage({
             </select>
           </label>
           <label className="block space-y-2">
-            <span className="label">AI model</span>
+            <span className="label">Model</span>
             <select className="field" name="ai_model" required defaultValue={prompt.ai_model ?? "Midjourney"}>
               {models.map((model) => (
                 <option key={model} value={model}>{model}</option>
@@ -122,6 +133,21 @@ export default async function AdminEditPromptPage({
           <label className="block space-y-2">
             <span className="label">Price</span>
             <input className="field" name="price" type="number" min="0" step="0.01" defaultValue={prompt.price ?? 0} />
+          </label>
+        </div>
+
+        <div className="grid gap-5 md:grid-cols-3">
+          <label className="block space-y-2">
+            <span className="label">Copy count</span>
+            <input className="field" name="copy_count" type="number" min="0" step="1" defaultValue={prompt.copy_count ?? 0} />
+          </label>
+          <label className="block space-y-2">
+            <span className="label">Favourite/save count</span>
+            <input className="field" name="save_count" type="number" min="0" step="1" defaultValue={prompt.save_count ?? 0} />
+          </label>
+          <label className="block space-y-2">
+            <span className="label">View count</span>
+            <input className="field" value={prompt.view_count ?? 0} readOnly />
           </label>
         </div>
 

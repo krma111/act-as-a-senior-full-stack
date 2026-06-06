@@ -22,6 +22,7 @@ type PromptRow = {
   title: string;
   description?: string | null;
   image_url: string | null;
+  creator_name?: string | null;
   prompt_text: string;
   negative_prompt: string | null;
   ai_model: string | null;
@@ -31,18 +32,20 @@ type PromptRow = {
   status: "pending" | "approved" | "rejected";
   rejection_reason: string | null;
   copy_count: number | null;
+  save_count?: number | null;
   view_count: number | null;
   featured: boolean | null;
   reference_required?: boolean | null;
+  deleted_at?: string | null;
   created_at: string;
   updated_at: string;
 };
 
 const promptSelect =
-  "id,user_id,title,description,image_url,prompt_text,negative_prompt,ai_model,aspect_ratio,category,tags,status,rejection_reason,copy_count,view_count,featured,reference_required,created_at,updated_at";
+  "id,user_id,title,description,image_url,creator_name,prompt_text,negative_prompt,ai_model,aspect_ratio,category,tags,status,rejection_reason,copy_count,save_count,view_count,featured,reference_required,deleted_at,created_at,updated_at";
 
 const profileSelect =
-  "id,email,full_name,display_name,avatar_url,role,manual_badge_override,manual_badge_type,manual_badge_assigned_by,manual_badge_assigned_at,created_at,updated_at";
+  "id,email,full_name,display_name,avatar_url,role,status,banned_at,banned_by,ban_reason,manual_badge_override,manual_badge_type,manual_badge_assigned_by,manual_badge_assigned_at,created_at,updated_at";
 const fallbackProfileSelect = "id,email,full_name,display_name,avatar_url,role,created_at,updated_at";
 
 function categoryFromName(name: string): Category {
@@ -67,6 +70,7 @@ export function normalizePrompt(row: PromptRow, profile?: Profile | null): Promp
     prompt_text: row.prompt_text,
     negative_prompt: row.negative_prompt,
     image_url: row.image_url,
+    creator_name: row.creator_name ?? null,
     ai_model: row.ai_model ?? "Image model",
     visibility: "public",
     aspect_ratio: row.aspect_ratio,
@@ -74,12 +78,14 @@ export function normalizePrompt(row: PromptRow, profile?: Profile | null): Promp
     reference_required: Boolean(row.reference_required),
     tags: Array.isArray(row.tags) ? row.tags : [],
     copy_count: row.copy_count ?? 0,
-    like_count: 0,
+    like_count: row.save_count ?? 0,
+    save_count: row.save_count ?? 0,
     view_count: row.view_count ?? 0,
     featured: Boolean(row.featured),
     hidden: false,
     status: "approved",
     rejection_reason: null,
+    deleted_at: row.deleted_at ?? null,
     created_at: row.created_at,
     updated_at: row.updated_at,
     categories: category,
@@ -143,7 +149,12 @@ export async function getSiteSettings(): Promise<SiteSettings> {
       hero_headline: "Discover and share powerful image prompts",
       hero_subheadline: "Browse approved creator prompts from the live vault.",
       footer_text: "Copyright 2026 PromptVault. All rights reserved.",
-      admin_email: ""
+      admin_email: "",
+      cta_text: "Start exploring prompts",
+      empty_state_title: "No prompts yet",
+      empty_state_message: "Approved prompts will appear here.",
+      featured_prompt_ids: [],
+      trending_prompt_ids: []
     };
   }
 
@@ -157,7 +168,12 @@ export async function getSiteSettings(): Promise<SiteSettings> {
     hero_headline: data?.hero_headline ?? "Discover and share powerful image prompts",
     hero_subheadline: data?.hero_subheadline ?? "Browse approved creator prompts from the live vault.",
     footer_text: data?.footer_text ?? "Copyright 2026 PromptVault. All rights reserved.",
-    admin_email: ""
+    admin_email: "",
+    cta_text: data?.cta_text ?? "Start exploring prompts",
+    empty_state_title: data?.empty_state_title ?? "No prompts yet",
+    empty_state_message: data?.empty_state_message ?? "Approved prompts will appear here.",
+    featured_prompt_ids: Array.isArray(data?.featured_prompt_ids) ? data.featured_prompt_ids : [],
+    trending_prompt_ids: Array.isArray(data?.trending_prompt_ids) ? data.trending_prompt_ids : []
   };
 }
 
@@ -165,7 +181,18 @@ export async function getCategories(): Promise<Category[]> {
   if (!hasSupabaseEnv) return [];
 
   const supabase = await createClient();
-  const { data } = await supabase.from("prompts").select("category").eq("status", "approved").order("category");
+  const categoryResult = await supabase
+    .from("categories")
+    .select("id,name,slug,description,sort_order,is_active")
+    .eq("is_active", true)
+    .order("sort_order")
+    .order("name");
+
+  if (!categoryResult.error && categoryResult.data?.length) {
+    return categoryResult.data as Category[];
+  }
+
+  const { data } = await supabase.from("prompts").select("category").eq("status", "approved").is("deleted_at", null).order("category");
   const names = Array.from(new Set((data ?? []).map((row) => row.category).filter(Boolean)));
   return names.map(categoryFromName);
 }
@@ -185,7 +212,8 @@ export async function getPrompts(options?: {
   let query = supabase
     .from("prompts")
     .select(promptSelect)
-    .eq("status", "approved");
+    .eq("status", "approved")
+    .is("deleted_at", null);
 
   if (options?.category) query = query.ilike("category", options.category.replace(/-/g, " "));
   if (options?.aspectRatio) query = query.eq("aspect_ratio", options.aspectRatio);
@@ -224,6 +252,7 @@ export async function getPrompt(idOrSlug: string) {
       .select(promptSelect)
       .eq("id", id)
       .eq("status", "approved")
+      .is("deleted_at", null)
       .maybeSingle();
     if (error || !data) return null;
     const profiles = await profilesByIds([data.user_id]);
@@ -234,6 +263,7 @@ export async function getPrompt(idOrSlug: string) {
     .from("prompts")
     .select(promptSelect)
     .eq("status", "approved")
+    .is("deleted_at", null)
     .limit(100);
   if (error) return null;
   const match = ((data ?? []) as PromptRow[]).find((row) => slugify(row.title) === idOrSlug);
@@ -269,6 +299,7 @@ export async function getPromptsByCreator(username: string) {
     .select(promptSelect)
     .eq("user_id", creator.id)
     .eq("status", "approved")
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   if (error) return { creator, prompts: [] };
@@ -285,7 +316,8 @@ export async function getCreatorLeaderboard() {
   const { data: rows, error } = await supabase
     .from("prompts")
     .select("user_id,copy_count")
-    .eq("status", "approved");
+    .eq("status", "approved")
+    .is("deleted_at", null);
 
   if (error) return [];
 

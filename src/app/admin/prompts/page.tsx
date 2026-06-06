@@ -1,8 +1,9 @@
-import Image from "next/image";
+﻿import Image from "next/image";
 import Link from "next/link";
-import { CheckCircle2, Edit3, Star, Trash2, XCircle } from "lucide-react";
+import { CheckCircle2, Edit3, RotateCcw, Star, Trash2, XCircle } from "lucide-react";
 import { AdminSubmitButton } from "@/components/admin-action-button";
-import { approvePrompt, deletePrompt, rejectPrompt, toggleFeaturedPrompt } from "@/lib/admin-actions";
+import { AdminTabs } from "@/components/admin-tabs";
+import { approvePrompt, deletePrompt, rejectPrompt, restorePrompt, toggleFeaturedPrompt } from "@/lib/admin-actions";
 import { getAdminPrompts } from "@/lib/admin-data";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +12,9 @@ const filters = [
   { label: "All", value: "all" },
   { label: "Pending", value: "pending" },
   { label: "Approved", value: "approved" },
-  { label: "Rejected", value: "rejected" }
+  { label: "Rejected", value: "rejected" },
+  { label: "Featured", value: "featured" },
+  { label: "Deleted", value: "deleted" }
 ];
 
 function statusClass(status: string) {
@@ -31,14 +34,15 @@ function formatDate(value: string) {
 export default async function AdminPromptsPage({
   searchParams
 }: {
-  searchParams: Promise<{ status?: string; message?: string; error?: string }>;
+  searchParams: Promise<{ status?: string; user?: string; message?: string; error?: string }>;
 }) {
   const params = await searchParams;
-  const { prompts, error, activeStatus, counts, diagnostics } = await getAdminPrompts(params.status);
+  const { prompts, error, activeStatus, counts, diagnostics } = await getAdminPrompts(params.status, params.user);
   const hasHiddenPendingProblem = activeStatus === "pending" && !prompts.length && counts.pending > 0;
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <AdminTabs active="Prompts" />
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand">Admin console</p>
@@ -60,8 +64,9 @@ export default async function AdminPromptsPage({
       </div>
 
       <div className="mb-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-300">
-        Showing {diagnostics.renderedCount} prompts. Pending in database: {diagnostics.pendingCount}. Admin access:{" "}
+        Showing {diagnostics.renderedCount} prompts. Pending in database: {diagnostics.pendingCount}. Admin access: {" "}
         {diagnostics.usingServiceRole ? "service role" : "verified admin session"}.
+        {params.user ? <span className="mt-2 block text-brand">Filtered to one creator profile.</span> : null}
         {diagnostics.serviceWarning ? <span className="mt-2 block text-amber-200">{diagnostics.serviceWarning}</span> : null}
       </div>
 
@@ -97,6 +102,7 @@ export default async function AdminPromptsPage({
                   <div className="absolute left-3 top-3 flex flex-wrap gap-2">
                     <span className={`rounded-full border px-3 py-1 text-xs font-bold uppercase ${statusClass(prompt.status)}`}>{prompt.status}</span>
                     {prompt.featured ? <span className="rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-xs font-bold text-brand">Featured</span> : null}
+                    {prompt.deleted_at ? <span className="rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-bold text-red-100">Deleted</span> : null}
                   </div>
                 </div>
 
@@ -105,13 +111,14 @@ export default async function AdminPromptsPage({
                     <div>
                       <h2 className="text-xl font-bold text-white">{prompt.title || "Untitled prompt"}</h2>
                       <p className="mt-1 text-sm text-slate-400">
-                        {prompt.creator_name ?? "Creator"} {prompt.creator_email ? `(${prompt.creator_email})` : ""} · {formatDate(prompt.created_at)}
+                        {prompt.creator_name ?? "Creator"} {prompt.creator_email ? `(${prompt.creator_email})` : ""} - {formatDate(prompt.created_at)}
                       </p>
                       <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-300">{prompt.description || prompt.prompt_text}</p>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-xs text-slate-400 xl:min-w-[260px]">
+                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-400 sm:grid-cols-4 xl:min-w-[360px]">
                       <span className="rounded-xl bg-white/[0.04] p-2">Views: {prompt.view_count ?? 0}</span>
                       <span className="rounded-xl bg-white/[0.04] p-2">Copies: {prompt.copy_count ?? 0}</span>
+                      <span className="rounded-xl bg-white/[0.04] p-2">Saves: {prompt.save_count ?? 0}</span>
                       <span className="rounded-xl bg-white/[0.04] p-2">{prompt.aspect_ratio ?? "1:1"}</span>
                     </div>
                   </div>
@@ -121,13 +128,23 @@ export default async function AdminPromptsPage({
                   ) : null}
 
                   <div className="flex flex-wrap gap-2">
-                    <form action={approvePrompt}>
-                      <input type="hidden" name="id" value={prompt.id} />
-                      <AdminSubmitButton pendingText="Approving...">
-                        <CheckCircle2 className="h-4 w-4" />
-                        Approve
-                      </AdminSubmitButton>
-                    </form>
+                    {prompt.deleted_at ? (
+                      <form action={restorePrompt}>
+                        <input type="hidden" name="id" value={prompt.id} />
+                        <AdminSubmitButton pendingText="Restoring...">
+                          <RotateCcw className="h-4 w-4" />
+                          Restore
+                        </AdminSubmitButton>
+                      </form>
+                    ) : (
+                      <form action={approvePrompt}>
+                        <input type="hidden" name="id" value={prompt.id} />
+                        <AdminSubmitButton pendingText="Approving...">
+                          <CheckCircle2 className="h-4 w-4" />
+                          Approve
+                        </AdminSubmitButton>
+                      </form>
+                    )}
 
                     <form action={toggleFeaturedPrompt}>
                       <input type="hidden" name="id" value={prompt.id} />
@@ -143,23 +160,27 @@ export default async function AdminPromptsPage({
                       Edit
                     </Link>
 
-                    <form action={deletePrompt}>
-                      <input type="hidden" name="id" value={prompt.id} />
-                      <AdminSubmitButton className="btn-ghost text-red-200" pendingText="Deleting..." confirm="Delete this prompt permanently?">
-                        <Trash2 className="h-4 w-4" />
-                        Delete
-                      </AdminSubmitButton>
-                    </form>
+                    {!prompt.deleted_at ? (
+                      <form action={deletePrompt}>
+                        <input type="hidden" name="id" value={prompt.id} />
+                        <AdminSubmitButton className="btn-ghost text-red-200" pendingText="Deleting..." confirm="Move this prompt to deleted?">
+                          <Trash2 className="h-4 w-4" />
+                          Delete
+                        </AdminSubmitButton>
+                      </form>
+                    ) : null}
                   </div>
 
-                  <form action={rejectPrompt} className="grid gap-2 border-t border-white/10 pt-4 md:grid-cols-[1fr_auto]">
-                    <input type="hidden" name="id" value={prompt.id} />
-                    <input className="field" name="rejection_reason" placeholder="Rejection reason shown to creator" />
-                    <AdminSubmitButton className="btn-ghost text-red-100" pendingText="Rejecting...">
-                      <XCircle className="h-4 w-4" />
-                      Reject
-                    </AdminSubmitButton>
-                  </form>
+                  {!prompt.deleted_at ? (
+                    <form action={rejectPrompt} className="grid gap-2 border-t border-white/10 pt-4 md:grid-cols-[1fr_auto]">
+                      <input type="hidden" name="id" value={prompt.id} />
+                      <input className="field" name="rejection_reason" placeholder="Rejection reason shown to creator" />
+                      <AdminSubmitButton className="btn-ghost text-red-100" pendingText="Rejecting...">
+                        <XCircle className="h-4 w-4" />
+                        Reject
+                      </AdminSubmitButton>
+                    </form>
+                  ) : null}
                 </div>
               </div>
             </article>

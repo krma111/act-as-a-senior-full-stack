@@ -3,6 +3,18 @@ export type Category = {
   name: string;
   slug: string;
   description: string | null;
+  sort_order?: number;
+  is_active?: boolean;
+};
+
+export type TagRecord = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
 export type Profile = {
@@ -12,6 +24,10 @@ export type Profile = {
   display_name?: string | null;
   avatar_url: string | null;
   role: "user" | "admin" | "creator";
+  status?: "active" | "banned";
+  banned_at?: string | null;
+  banned_by?: string | null;
+  ban_reason?: string | null;
   manual_badge_override?: boolean;
   manual_badge_type?: "none" | "bronze" | "silver" | "gold" | "diamond" | null;
   manual_badge_assigned_by?: string | null;
@@ -33,6 +49,7 @@ export type Prompt = {
   prompt_text: string;
   negative_prompt: string | null;
   image_url: string | null;
+  creator_name?: string | null;
   ai_model: string;
   visibility?: "public" | "private";
   aspect_ratio?: string | null;
@@ -41,11 +58,14 @@ export type Prompt = {
   tags: string[];
   copy_count: number;
   like_count: number;
+  save_count?: number;
   view_count?: number;
   featured: boolean;
   hidden: boolean;
   status?: PromptStatus;
   rejection_reason?: string | null;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
   approved_at?: string | null;
   approved_by?: string | null;
   created_at: string;
@@ -62,6 +82,11 @@ export type SiteSettings = {
   hero_subheadline: string;
   footer_text: string;
   admin_email: string;
+  cta_text?: string;
+  empty_state_title?: string;
+  empty_state_message?: string;
+  featured_prompt_ids?: string[];
+  trending_prompt_ids?: string[];
 };
 
 export type FavoriteWithPrompt = {

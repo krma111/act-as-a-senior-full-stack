@@ -2,14 +2,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, Sparkles } from "lucide-react";
+import { Edit3, Heart, Sparkles, Trash2 } from "lucide-react";
 import { creatorSlug, promptSlug } from "@/lib/slugs";
 import { CreatorBadge } from "@/components/creator-badge";
 import { CopyPromptButton } from "@/components/copy-prompt-button";
+import { deletePrompt } from "@/lib/admin-actions";
 import type { Prompt } from "@/lib/types";
 
-export function PromptCard({ prompt }: { prompt: Prompt }) {
-  const creator = prompt.users?.display_name ?? prompt.users?.full_name ?? prompt.users?.email?.split("@")[0] ?? "Creator";
+export function PromptCard({ prompt, isAdmin = false }: { prompt: Prompt; isAdmin?: boolean }) {
+  const creator = prompt.creator_name ?? prompt.users?.display_name ?? prompt.users?.full_name ?? prompt.users?.email?.split("@")[0] ?? "Creator";
   const tags = prompt.tags.slice(0, 3);
   const href = `/prompt/${promptSlug(prompt)}`;
 
@@ -74,6 +75,26 @@ export function PromptCard({ prompt }: { prompt: Prompt }) {
             <Heart className="h-3.5 w-3.5 text-brand" /> {prompt.like_count}
           </span>
         </div>
+        {isAdmin ? (
+          <div className="flex flex-wrap gap-2 border-t border-white/10 pt-3">
+            <Link href={`/admin/prompts/${prompt.id}/edit`} className="btn-ghost px-3 py-2 text-xs">
+              <Edit3 className="h-3.5 w-3.5" />
+              Edit
+            </Link>
+            <form action={deletePrompt}>
+              <input type="hidden" name="id" value={prompt.id} />
+              <button
+                className="btn-ghost px-3 py-2 text-xs text-red-100"
+                onClick={(event) => {
+                  if (!window.confirm("Move this prompt to deleted?")) event.preventDefault();
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
+              </button>
+            </form>
+          </div>
+        ) : null}
       </div>
     </article>
   );
