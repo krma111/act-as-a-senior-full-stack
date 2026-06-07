@@ -29,6 +29,18 @@ function redirectWithMessage(path: string, type: "message" | "error", message: s
   redirect(`${path}?${type}=${encodeURIComponent(message)}`);
 }
 
+function isValidUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+async function runAdminSideEffect(label: string, action: () => Promise<void>) {
+  try {
+    await action();
+  } catch (error) {
+    console.error(`[admin-actions] ${label} failed`, error);
+  }
+}
+
 function tagsFrom(value: string) {
   return value
     .split(",")
@@ -111,19 +123,31 @@ async function logAdminAction(
   oldValue: unknown,
   newValue: unknown
 ) {
-  await supabase.from("admin_logs").insert({
-    admin_user_id: adminUserId,
-    action_type: actionType,
-    target_table: targetTable,
-    target_id: targetId,
-    old_value: oldValue ?? null,
-    new_value: newValue ?? null
+  await runAdminSideEffect(`admin log ${actionType}`, async () => {
+    const { error } = await supabase.from("admin_logs").insert({
+      admin_user_id: adminUserId,
+      action_type: actionType,
+      target_table: targetTable,
+      target_id: targetId,
+      old_value: oldValue ?? null,
+      new_value: newValue ?? null
+    });
+
+    if (error) throw new Error(error.message);
   });
 }
 
 async function readPromptSnapshot(supabase: AdminSupabase, id: string) {
-  const { data } = await supabase.from("prompts").select("*").eq("id", id).maybeSingle();
-  return data ?? null;
+  if (!isValidUuid(id)) return null;
+
+  try {
+    const { data, error } = await supabase.from("prompts").select("*").eq("id", id).maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ?? null;
+  } catch (error) {
+    console.error("[admin-actions] Prompt snapshot lookup failed", error);
+    return null;
+  }
 }
 
 async function uploadAdminPromptImage(supabase: AdminSupabase, formData: FormData, promptId: string) {
@@ -167,43 +191,59 @@ async function countAdmins(supabase: Awaited<ReturnType<typeof requireAdmin>>["s
 }
 
 async function notifyPromptApproved(supabase: AdminSupabase, prompt: ModeratedPrompt) {
-  const promptUrl = `${siteUrl}/prompt/${promptSlug(prompt)}`;
-  const { data: creator } = await supabase.from("profiles").select("id,email").eq("id", prompt.user_id).maybeSingle();
+  await runAdminSideEffect("approval notifications", async () => {
+    const promptUrl = `${siteUrl}/prompt/${promptSlug(prompt)}`;
+    const { data: creator, error: creatorError } = await supabase.from("profiles").select("id,email").eq("id", prompt.user_id).maybeSingle();
+    if (creatorError) throw new Error(creatorError.message);
 
-  if (creator?.email) {
-    await sendPromptApprovedEmail(creator.email, prompt.title, promptUrl, prompt.id, prompt.user_id);
-  }
+    if (creator?.email) {
+      await sendPromptApprovedEmail(creator.email, prompt.title, promptUrl, prompt.id, prompt.user_id);
+    }
 
-  const { data: savedRows } = await supabase.from("saved_prompts").select("user_id").eq("prompt_id", prompt.id);
-  const { data: followerRows } = await supabase.from("creator_follows").select("user_id").eq("creator_id", prompt.user_id);
-  const recipientIds = Array.from(
-    new Set([
-      ...((savedRows ?? []) as Array<{ user_id: string }>).map((row) => row.user_id),
-      ...((followerRows ?? []) as Array<{ user_id: string }>).map((row) => row.user_id)
-    ])
-  ).filter((userId) => userId !== prompt.user_id);
+    const [savedResult, followerResult] = await Promise.all([
+      supabase.from("saved_prompts").select("user_id").eq("prompt_id", prompt.id),
+      supabase.from("creator_follows").select("user_id").eq("creator_id", prompt.user_id)
+    ]);
 
-  if (!recipientIds.length) return;
+    if (savedResult.error) console.error("[admin-actions] Saved prompt notification lookup failed", savedResult.error.message);
+    if (followerResult.error) console.error("[admin-actions] Creator follower notification lookup failed", followerResult.error.message);
 
-  const { data: recipients } = await supabase.from("profiles").select("id,email").in("id", recipientIds);
-  await Promise.all(
-    ((recipients ?? []) as Array<{ id: string; email: string | null }>).map((recipient) =>
-      recipient.email ? sendFollowerApprovedPromptEmail(recipient.email, prompt.title, prompt.id, recipient.id) : Promise.resolve()
-    )
-  );
+    const recipientIds = Array.from(
+      new Set([
+        ...((savedResult.data ?? []) as Array<{ user_id: string }>).map((row) => row.user_id),
+        ...((followerResult.data ?? []) as Array<{ user_id: string }>).map((row) => row.user_id)
+      ])
+    ).filter((userId) => userId !== prompt.user_id);
+
+    if (!recipientIds.length) return;
+
+    const { data: recipients, error: recipientsError } = await supabase.from("profiles").select("id,email").in("id", recipientIds);
+    if (recipientsError) throw new Error(recipientsError.message);
+
+    await Promise.allSettled(
+      ((recipients ?? []) as Array<{ id: string; email: string | null }>).map((recipient) =>
+        recipient.email ? sendFollowerApprovedPromptEmail(recipient.email, prompt.title, prompt.id, recipient.id) : Promise.resolve()
+      )
+    );
+  });
 }
 
 async function notifyPromptRejected(supabase: AdminSupabase, prompt: ModeratedPrompt, reason: string) {
-  const { data: creator } = await supabase.from("profiles").select("email").eq("id", prompt.user_id).maybeSingle();
+  await runAdminSideEffect("rejection notification", async () => {
+    const { data: creator, error } = await supabase.from("profiles").select("email").eq("id", prompt.user_id).maybeSingle();
+    if (error) throw new Error(error.message);
 
-  if (creator?.email) {
-    await sendRejectionEmail(creator.email, prompt.title, reason, prompt.id, prompt.user_id);
-  }
+    if (creator?.email) {
+      await sendRejectionEmail(creator.email, prompt.title, reason, prompt.id, prompt.user_id);
+    }
+  });
 }
 
 export async function approvePrompt(formData: FormData) {
   const { supabase, user } = await requireAdmin("/admin/prompts");
   const id = asString(formData, "id");
+  if (!isValidUuid(id)) redirectWithMessage("/admin/prompts", "error", "Prompt not found.");
+
   const oldValue = await readPromptSnapshot(supabase, id);
   const { error } = await supabase
     .from("prompts")
@@ -212,7 +252,10 @@ export async function approvePrompt(formData: FormData) {
 
   if (error) redirectWithMessage("/admin/prompts", "error", error.message);
 
-  const { data: prompt } = await supabase.from("prompts").select("id,title,user_id").eq("id", id).maybeSingle();
+  const { data: prompt, error: promptError } = await supabase.from("prompts").select("id,title,user_id").eq("id", id).maybeSingle();
+  if (promptError) {
+    console.error("[admin-actions] Approved prompt reload failed", promptError.message);
+  }
   if (prompt) {
     await notifyPromptApproved(supabase, prompt);
   }
@@ -228,10 +271,14 @@ export async function rejectPrompt(formData: FormData) {
   const { supabase, user } = await requireAdmin("/admin/prompts");
   const id = asString(formData, "id");
   const reason = asString(formData, "rejection_reason");
+  if (!isValidUuid(id)) redirectWithMessage("/admin/prompts", "error", "Prompt not found.");
   if (reason.length < 3) redirectWithMessage("/admin/prompts", "error", "Rejection reason is required.");
 
   const oldValue = await readPromptSnapshot(supabase, id);
-  const { data: prompt } = await supabase.from("prompts").select("id,title,user_id").eq("id", id).maybeSingle();
+  const { data: prompt, error: promptError } = await supabase.from("prompts").select("id,title,user_id").eq("id", id).maybeSingle();
+  if (promptError) {
+    console.error("[admin-actions] Rejected prompt reload failed", promptError.message);
+  }
   const { error } = await supabase
     .from("prompts")
     .update({ status: "rejected", rejection_reason: reason, updated_at: new Date().toISOString() })
@@ -249,6 +296,8 @@ export async function rejectPrompt(formData: FormData) {
 export async function deletePrompt(formData: FormData) {
   const { supabase, user } = await requireAdmin("/admin/prompts");
   const id = asString(formData, "id");
+  if (!isValidUuid(id)) redirectWithMessage("/admin/prompts", "error", "Prompt not found.");
+
   const oldValue = await readPromptSnapshot(supabase, id);
   const { error } = await supabase
     .from("prompts")
@@ -266,6 +315,8 @@ export async function deletePrompt(formData: FormData) {
 export async function restorePrompt(formData: FormData) {
   const { supabase, user } = await requireAdmin("/admin/prompts");
   const id = asString(formData, "id");
+  if (!isValidUuid(id)) redirectWithMessage("/admin/prompts", "error", "Prompt not found.");
+
   const oldValue = await readPromptSnapshot(supabase, id);
   const { error } = await supabase.from("prompts").update({ deleted_at: null, deleted_by: null, updated_at: new Date().toISOString() }).eq("id", id);
 
@@ -281,6 +332,8 @@ export async function toggleFeaturedPrompt(formData: FormData) {
   const { supabase, user } = await requireAdmin("/admin/prompts");
   const id = asString(formData, "id");
   const featured = asBoolean(formData, "featured");
+  if (!isValidUuid(id)) redirectWithMessage("/admin/prompts", "error", "Prompt not found.");
+
   const oldValue = await readPromptSnapshot(supabase, id);
   const { error } = await supabase.from("prompts").update({ featured, updated_at: new Date().toISOString() }).eq("id", id);
 
@@ -296,7 +349,7 @@ export async function updateAdminPrompt(formData: FormData) {
   const id = asString(formData, "id");
   const errorPath = `/admin/prompts/${id}/edit`;
   const validationError = validatePrompt(formData);
-  if (!id) redirectWithMessage("/admin/prompts", "error", "Prompt not found.");
+  if (!isValidUuid(id)) redirectWithMessage("/admin/prompts", "error", "Prompt not found.");
   if (validationError) redirectWithMessage(errorPath, "error", validationError);
 
   const { supabase, user } = await requireAdmin(errorPath);
@@ -408,7 +461,7 @@ export async function updateUserRole(formData: FormData) {
   const id = asString(formData, "id");
   const role = cleanRole(asString(formData, "role"));
 
-  if (!id) redirectWithMessage("/admin/users", "error", "User not found.");
+  if (!isValidUuid(id)) redirectWithMessage("/admin/users", "error", "User not found.");
   if (id === currentUser.id && role !== "admin" && (await countAdmins(supabase)) <= 1) {
     redirectWithMessage("/admin/users", "error", "You cannot remove the last admin account.");
   }
@@ -429,7 +482,7 @@ export async function updateUserBadge(formData: FormData) {
   const badgeType = cleanBadgeType(asString(formData, "manual_badge_type"));
   const manualOverride = badgeType !== "none";
 
-  if (!id) redirectWithMessage("/admin/users", "error", "User not found.");
+  if (!isValidUuid(id)) redirectWithMessage("/admin/users", "error", "User not found.");
 
   const { data: oldValue } = await supabase.from("profiles").select("*").eq("id", id).maybeSingle();
   const { error } = await supabase
@@ -460,7 +513,7 @@ export async function updateUserBan(formData: FormData) {
   const shouldBan = asBoolean(formData, "ban");
   const reason = asString(formData, "ban_reason") || null;
 
-  if (!id) redirectWithMessage("/admin/users", "error", "User not found.");
+  if (!isValidUuid(id)) redirectWithMessage("/admin/users", "error", "User not found.");
   if (id === currentUser.id && shouldBan) redirectWithMessage("/admin/users", "error", "You cannot ban your own admin account.");
 
   const { data: oldValue } = await supabase.from("profiles").select("*").eq("id", id).maybeSingle();
@@ -519,13 +572,14 @@ export async function upsertCategory(formData: FormData) {
   if (name.length < 2) redirectWithMessage("/admin/categories", "error", "Category name is required.");
   if (!slug) redirectWithMessage("/admin/categories", "error", "Category slug is required.");
 
-  const { data: oldValue } = id ? await supabase.from("categories").select("*").eq("id", id).maybeSingle() : { data: null };
-  const result = id
-    ? await supabase.from("categories").update(payload).eq("id", id).select("id").maybeSingle()
+  const normalizedId = isValidUuid(id) ? id : "";
+  const { data: oldValue } = normalizedId ? await supabase.from("categories").select("*").eq("id", normalizedId).maybeSingle() : { data: null };
+  const result = normalizedId
+    ? await supabase.from("categories").update(payload).eq("id", normalizedId).select("id").maybeSingle()
     : await supabase.from("categories").insert({ ...payload, created_at: new Date().toISOString() }).select("id").maybeSingle();
 
   if (result.error) redirectWithMessage("/admin/categories", "error", result.error.message);
-  await logAdminAction(supabase, user.id, id ? "category_updated" : "category_created", "categories", result.data?.id ?? id, oldValue, payload);
+  await logAdminAction(supabase, user.id, normalizedId ? "category_updated" : "category_created", "categories", result.data?.id ?? normalizedId, oldValue, payload);
   revalidatePath("/");
   revalidatePath("/admin/categories");
   redirectWithMessage("/admin/categories", "message", id ? "Category updated." : "Category created.");
@@ -535,6 +589,8 @@ export async function toggleCategory(formData: FormData) {
   const { supabase, user } = await requireAdmin("/admin/categories");
   const id = asString(formData, "id");
   const isActive = asBoolean(formData, "is_active");
+  if (!isValidUuid(id)) redirectWithMessage("/admin/categories", "error", "Category not found.");
+
   const { data: oldValue } = await supabase.from("categories").select("*").eq("id", id).maybeSingle();
   const { error } = await supabase.from("categories").update({ is_active: isActive, updated_at: new Date().toISOString() }).eq("id", id);
 
@@ -561,13 +617,14 @@ export async function upsertTag(formData: FormData) {
   if (name.length < 2) redirectWithMessage("/admin/tags", "error", "Tag name is required.");
   if (!slug) redirectWithMessage("/admin/tags", "error", "Tag slug is required.");
 
-  const { data: oldValue } = id ? await supabase.from("tags").select("*").eq("id", id).maybeSingle() : { data: null };
-  const result = id
-    ? await supabase.from("tags").update(payload).eq("id", id).select("id").maybeSingle()
+  const normalizedId = isValidUuid(id) ? id : "";
+  const { data: oldValue } = normalizedId ? await supabase.from("tags").select("*").eq("id", normalizedId).maybeSingle() : { data: null };
+  const result = normalizedId
+    ? await supabase.from("tags").update(payload).eq("id", normalizedId).select("id").maybeSingle()
     : await supabase.from("tags").insert({ ...payload, created_at: new Date().toISOString() }).select("id").maybeSingle();
 
   if (result.error) redirectWithMessage("/admin/tags", "error", result.error.message);
-  await logAdminAction(supabase, user.id, id ? "tag_updated" : "tag_created", "tags", result.data?.id ?? id, oldValue, payload);
+  await logAdminAction(supabase, user.id, normalizedId ? "tag_updated" : "tag_created", "tags", result.data?.id ?? normalizedId, oldValue, payload);
   revalidatePath("/");
   revalidatePath("/admin/tags");
   redirectWithMessage("/admin/tags", "message", id ? "Tag updated." : "Tag created.");
@@ -577,6 +634,8 @@ export async function toggleTag(formData: FormData) {
   const { supabase, user } = await requireAdmin("/admin/tags");
   const id = asString(formData, "id");
   const isActive = asBoolean(formData, "is_active");
+  if (!isValidUuid(id)) redirectWithMessage("/admin/tags", "error", "Tag not found.");
+
   const { data: oldValue } = await supabase.from("tags").select("*").eq("id", id).maybeSingle();
   const { error } = await supabase.from("tags").update({ is_active: isActive, updated_at: new Date().toISOString() }).eq("id", id);
 
@@ -592,7 +651,7 @@ export async function approvePack(formData: FormData) {
   const { supabase, user } = await requireAdmin("/admin/packs");
   const id = asString(formData, "id");
 
-  if (!id) redirectWithMessage("/admin/packs", "error", "Pack not found.");
+  if (!isValidUuid(id)) redirectWithMessage("/admin/packs", "error", "Pack not found.");
   const { data: pack, error: packError } = await supabase
     .from("prompt_packs")
     .select("id,price,is_paid,total_prompts")
@@ -624,7 +683,7 @@ export async function rejectPack(formData: FormData) {
   const id = asString(formData, "id");
   const reason = asString(formData, "rejection_reason") || "Rejected by admin.";
 
-  if (!id) redirectWithMessage("/admin/packs", "error", "Pack not found.");
+  if (!isValidUuid(id)) redirectWithMessage("/admin/packs", "error", "Pack not found.");
 
   const { data: oldValue } = await supabase.from("prompt_packs").select("*").eq("id", id).maybeSingle();
   const { error } = await supabase
@@ -642,7 +701,7 @@ export async function rejectPack(formData: FormData) {
 export async function deletePack(formData: FormData) {
   const { supabase, user } = await requireAdmin("/admin/packs");
   const id = asString(formData, "id");
-  if (!id) redirectWithMessage("/admin/packs", "error", "Pack not found.");
+  if (!isValidUuid(id)) redirectWithMessage("/admin/packs", "error", "Pack not found.");
 
   const { data: oldValue } = await supabase.from("prompt_packs").select("*").eq("id", id).maybeSingle();
   const { error } = await supabase.from("prompt_packs").delete().eq("id", id);
@@ -658,7 +717,7 @@ export async function approvePaymentRequest(formData: FormData) {
   const { supabase, user } = await requireAdmin("/admin/payments");
   const id = asString(formData, "id");
 
-  if (!id) redirectWithMessage("/admin/payments", "error", "Payment request is incomplete.");
+  if (!isValidUuid(id)) redirectWithMessage("/admin/payments", "error", "Payment request is incomplete.");
 
   const { data: request, error: requestError } = await supabase
     .from("payment_requests")
@@ -698,7 +757,7 @@ export async function rejectPaymentRequest(formData: FormData) {
   const { supabase, user } = await requireAdmin("/admin/payments");
   const id = asString(formData, "id");
   const reason = asString(formData, "rejection_reason") || "Payment rejected by admin.";
-  if (!id) redirectWithMessage("/admin/payments", "error", "Payment request not found.");
+  if (!isValidUuid(id)) redirectWithMessage("/admin/payments", "error", "Payment request not found.");
 
   const { error } = await supabase
     .from("payment_requests")
