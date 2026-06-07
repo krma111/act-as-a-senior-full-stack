@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Boxes, CreditCard, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
+import { Bot, Boxes, CreditCard, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
 import { AdminTabs } from "@/components/admin-tabs";
 import { MotionMain, MotionSection } from "@/components/motion-primitives";
 import { updateSiteSettings } from "@/lib/admin-actions";
@@ -36,6 +36,10 @@ export default async function AdminPage({
             <p className="mt-2 max-w-2xl text-sm text-slate-400">Real production metrics from Supabase. No demo stats or fake moderation data.</p>
           </div>
           <div className="flex flex-wrap gap-3">
+            <Link href="/admin/ai-create" className="btn-primary">
+              <Bot className="h-4 w-4" />
+              AI create
+            </Link>
             <Link href="/admin/prompts" className="btn-primary">
               <Sparkles className="h-4 w-4" />
               Manage prompts

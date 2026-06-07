@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 
 const tabs = [
   { href: "/admin", label: "Overview" },
+  { href: "/admin/ai-create", label: "AI Create" },
   { href: "/admin/prompts", label: "Prompts" },
   { href: "/admin/submissions", label: "Submissions" },
   { href: "/admin/packs", label: "Packs" },

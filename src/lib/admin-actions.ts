@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/admin-data";
+import type { GeneratedPromptDraft } from "@/lib/admin-ai-create";
 import { sendFollowerApprovedPromptEmail, sendPromptApprovedEmail, sendRejectionEmail } from "@/lib/email";
 import { siteUrl } from "@/lib/env";
 import { promptSlug } from "@/lib/slugs";
@@ -59,6 +60,37 @@ function cleanMoney(value: string) {
 function cleanInteger(value: string) {
   const amount = Number(value);
   return Number.isFinite(amount) && amount >= 0 ? Math.floor(amount) : 0;
+}
+
+function cleanDraftTags(tags: unknown) {
+  if (!Array.isArray(tags)) return [];
+  return tags
+    .map((tag) => String(tag).trim().toLowerCase().replace(/[^a-z0-9- ]/g, "").replace(/\s+/g, "-"))
+    .filter(Boolean)
+    .slice(0, 5);
+}
+
+function normalizeGeneratedDraft(value: unknown): GeneratedPromptDraft | null {
+  if (!value || typeof value !== "object") return null;
+  const draft = value as Partial<GeneratedPromptDraft>;
+  const title = typeof draft.title === "string" ? draft.title.trim() : "";
+  const prompt = typeof draft.prompt === "string" ? draft.prompt.trim() : "";
+  const category = typeof draft.category === "string" ? draft.category.trim().toLowerCase() : "";
+  const aspectRatio = typeof draft.aspectRatio === "string" ? draft.aspectRatio.trim() : "1:1";
+  const imageUrl = typeof draft.imageUrl === "string" ? draft.imageUrl.trim() : "";
+
+  if (title.length < 3 || prompt.length < 10 || !category) return null;
+
+  return {
+    title: title.slice(0, 160),
+    prompt,
+    description: typeof draft.description === "string" ? draft.description.trim().slice(0, 500) : "",
+    tags: cleanDraftTags(draft.tags),
+    category,
+    aspectRatio: aspectRatio || "1:1",
+    imageUrl,
+    status: "pending"
+  };
 }
 
 function slugFrom(value: string) {
@@ -318,6 +350,56 @@ export async function updateAdminPrompt(formData: FormData) {
   revalidatePath("/admin/prompts");
   revalidatePath(errorPath);
   redirectWithMessage("/admin/prompts", "message", "Prompt updated.");
+}
+
+export async function saveGeneratedPromptDrafts(drafts: GeneratedPromptDraft[]) {
+  const { supabase, user, profile } = await requireAdmin("/admin/ai-create");
+  const normalizedDrafts = drafts.map(normalizeGeneratedDraft).filter((draft): draft is GeneratedPromptDraft => Boolean(draft));
+
+  if (!normalizedDrafts.length) {
+    return { ok: false, message: "No valid generated drafts selected.", insertedCount: 0 };
+  }
+
+  const now = new Date().toISOString();
+  const rows = normalizedDrafts.map((draft) => ({
+    user_id: user.id,
+    title: draft.title,
+    description: draft.description || null,
+    prompt_text: draft.prompt,
+    negative_prompt: null,
+    image_url: draft.imageUrl || null,
+    creator_name: profile.full_name ?? profile.display_name ?? profile.email?.split("@")[0] ?? "Admin",
+    category: draft.category,
+    tags: draft.tags,
+    ai_model: "PromptVault Mock Generator",
+    aspect_ratio: draft.aspectRatio,
+    reference_required: false,
+    status: "pending",
+    rejection_reason: null,
+    featured: false,
+    updated_at: now
+  }));
+
+  const { data, error } = await supabase.from("prompts").insert(rows).select("id");
+
+  if (error) {
+    return { ok: false, message: error.message, insertedCount: 0 };
+  }
+
+  await logAdminAction(supabase, user.id, "ai_drafts_saved", "prompts", "bulk", null, {
+    count: data?.length ?? rows.length,
+    status: "pending"
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/prompts");
+  revalidatePath("/admin/submissions");
+
+  return {
+    ok: true,
+    message: `${data?.length ?? rows.length} generated draft${(data?.length ?? rows.length) === 1 ? "" : "s"} saved as pending prompts.`,
+    insertedCount: data?.length ?? rows.length
+  };
 }
 
 export async function updateUserRole(formData: FormData) {
