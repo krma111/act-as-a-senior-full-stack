@@ -42,11 +42,16 @@ export function PromptActions({
           whileTap={pending ? undefined : { scale: 0.94 }}
           onClick={() =>
             startTransition(async () => {
-              const result = await toggleFavorite(promptId);
-              if ("error" in result) toast.error(result.error);
-              else {
-                setFavorited(result.favorited);
-                toast.success(result.favorited ? "Saved to vault" : "Removed from vault");
+              try {
+                const result = await toggleFavorite(promptId);
+                if ("error" in result) toast.error(result.error);
+                else {
+                  setFavorited(result.favorited);
+                  toast.success(result.favorited ? "Saved to vault" : "Removed from vault");
+                }
+              } catch (error) {
+                console.error("[prompt-actions] Favorite action failed", error);
+                toast.error("Unable to update your favorite right now.");
               }
             })
           }

@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { SafeImage } from "@/components/safe-image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { updateCreatorPrompt } from "@/lib/creator-actions";
@@ -47,7 +47,7 @@ export default async function EditCreatorPromptPage({
             <span className="label">Current image</span>
             <div className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-white/10 bg-black/40">
               {prompt.image_url ? (
-                <Image src={prompt.image_url} alt={prompt.title} fill className="object-cover" sizes="(min-width:1024px) 35vw, 100vw" />
+                <SafeImage src={prompt.image_url} alt={prompt.title} fill className="object-cover" sizes="(min-width:1024px) 35vw, 100vw" />
               ) : (
                 <div className="grid h-full place-items-center bg-brand/5 px-6 text-center text-sm text-slate-400">Text-only prompt</div>
               )}

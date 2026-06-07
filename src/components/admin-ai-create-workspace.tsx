@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import Image from "next/image";
+import { SafeImage } from "@/components/safe-image";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, Edit3, Loader2, Save, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -29,6 +29,26 @@ function toDraftState(draft: GeneratedPromptDraft, index: number): DraftState {
     selected: true,
     editing: false
   };
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function generateDraftsWithRetry(idea: string, category: string, aspectRatio: string, quantity: number) {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      return generatePromptDrafts(idea, category, aspectRatio, quantity).map(toDraftState);
+    } catch (error) {
+      lastError = error;
+      console.error(`[admin-ai-create] Draft generation failed on attempt ${attempt}`, error);
+      await wait(180);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Unable to generate drafts.");
 }
 
 export function AdminAiCreateWorkspace({ demoMode = false }: { demoMode?: boolean }) {
@@ -66,10 +86,16 @@ export function AdminAiCreateWorkspace({ demoMode = false }: { demoMode?: boolea
     window.setTimeout(() => {
       // Future AI connection point: replace this mock generator with a server action
       // that calls the chosen text/image model and returns the same draft shape.
-      const generated = generatePromptDrafts(idea, category, aspectRatio, quantity).map(toDraftState);
-      setDrafts(generated);
-      setIsGenerating(false);
-      toast.success(`${generated.length} draft${generated.length === 1 ? "" : "s"} generated.`);
+      generateDraftsWithRetry(idea, category, aspectRatio, quantity)
+        .then((generated) => {
+          setDrafts(generated);
+          toast.success(`${generated.length} draft${generated.length === 1 ? "" : "s"} generated.`);
+        })
+        .catch((error) => {
+          console.error("[admin-ai-create] Draft generation failed", error);
+          toast.error("Unable to generate drafts. Try a shorter idea.");
+        })
+        .finally(() => setIsGenerating(false));
     }, 450);
   }
 
@@ -204,7 +230,7 @@ export function AdminAiCreateWorkspace({ demoMode = false }: { demoMode?: boolea
                 >
                   <div className="grid gap-0 md:grid-cols-[180px_1fr]">
                     <div className="relative min-h-[220px] overflow-hidden bg-slate-950">
-                      <Image src={draft.imageUrl} alt={draft.title} fill className="object-cover" sizes="(min-width: 768px) 180px, 100vw" />
+                      <SafeImage src={draft.imageUrl} alt={draft.title} fill className="object-cover" sizes="(min-width: 768px) 180px, 100vw" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-brand/20" />
                       <label className="absolute left-3 top-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/70 px-3 py-1 text-xs font-bold text-white backdrop-blur">
                         <input

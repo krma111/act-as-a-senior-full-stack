@@ -95,8 +95,13 @@ async function readProfileFromTable(supabase: SupabaseServerClient, table: "prof
 }
 
 export async function getProfileForUser(supabase: SupabaseServerClient, user: User) {
-  const current = (await readProfileFromTable(supabase, "profiles", user.id)) ?? (await readProfileFromTable(supabase, "users", user.id));
-  return normalizeProfile(user, current);
+  try {
+    const current = (await readProfileFromTable(supabase, "profiles", user.id)) ?? (await readProfileFromTable(supabase, "users", user.id));
+    return normalizeProfile(user, current);
+  } catch (error) {
+    console.error("[auth-session] Profile lookup failed; using auth metadata fallback", error);
+    return normalizeProfile(user, null);
+  }
 }
 
 export async function getAuthSessionState(): Promise<AuthSessionState> {
@@ -121,8 +126,13 @@ export async function getAuthSessionState(): Promise<AuthSessionState> {
     return { supabase, user: null, profile: null };
   }
 
-  const profile = await getProfileForUser(supabase, user);
-  return { supabase, user, profile };
+  try {
+    const profile = await getProfileForUser(supabase, user);
+    return { supabase, user, profile };
+  } catch (error) {
+    console.error("[auth-session] Session profile normalization failed", error);
+    return { supabase, user, profile: normalizeProfile(user, null) };
+  }
 }
 
 async function getSavedPromptsFromNewSchema(supabase: SupabaseServerClient, userId: string): Promise<DashboardSavedPrompt[] | null> {
@@ -189,5 +199,10 @@ async function getSavedPromptsFromLegacySchema(supabase: SupabaseServerClient, u
 }
 
 export async function getSavedPromptsForDashboard(supabase: SupabaseServerClient, userId: string) {
-  return (await getSavedPromptsFromNewSchema(supabase, userId)) ?? (await getSavedPromptsFromLegacySchema(supabase, userId));
+  try {
+    return (await getSavedPromptsFromNewSchema(supabase, userId)) ?? (await getSavedPromptsFromLegacySchema(supabase, userId));
+  } catch (error) {
+    console.error("[auth-session] Saved prompts lookup failed", error);
+    return [];
+  }
 }

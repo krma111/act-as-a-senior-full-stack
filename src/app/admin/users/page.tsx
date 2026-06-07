@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { SafeImage } from "@/components/safe-image";
 import Link from "next/link";
 import { AdminTabs } from "@/components/admin-tabs";
 import { CreatorBadge } from "@/components/creator-badge";
@@ -67,7 +67,7 @@ export default async function AdminUsersPage({
               <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex items-center gap-4">
                   {user.avatar_url ? (
-                    <Image src={user.avatar_url} alt={name} width={56} height={56} className="h-14 w-14 rounded-2xl border border-white/10 object-cover" />
+                    <SafeImage src={user.avatar_url} alt={name} width={56} height={56} className="h-14 w-14 rounded-2xl border border-white/10 object-cover" />
                   ) : (
                     <div className="grid h-14 w-14 place-items-center rounded-2xl border border-brand/30 bg-brand/10 text-sm font-bold text-brand">
                       {initials(name)}

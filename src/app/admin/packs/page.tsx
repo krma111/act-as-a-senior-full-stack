@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { SafeImage } from "@/components/safe-image";
 import Link from "next/link";
 import { CheckCircle2, Trash2, XCircle } from "lucide-react";
 import { AdminTabs } from "@/components/admin-tabs";
@@ -68,7 +68,7 @@ export default async function AdminPacksPage({ searchParams }: { searchParams: P
               <div className="grid gap-0 lg:grid-cols-[260px_1fr]">
                 <div className="relative aspect-[4/3] bg-black/40 lg:aspect-auto">
                   {pack.cover_image ? (
-                    <Image src={pack.cover_image} alt={pack.title} fill className="object-cover" sizes="(min-width:1024px) 260px, 100vw" />
+                    <SafeImage src={pack.cover_image} alt={pack.title} fill className="object-cover" sizes="(min-width:1024px) 260px, 100vw" />
                   ) : (
                     <div className="grid h-full min-h-[200px] place-items-center bg-brand/5 px-6 text-center text-sm text-slate-400">No cover image</div>
                   )}

@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { SafeImage } from "@/components/safe-image";
 import Link from "next/link";
 import { Edit3, PlusCircle } from "lucide-react";
 import { MotionMain, MotionSection } from "@/components/motion-primitives";
@@ -67,7 +67,7 @@ export default async function MyPromptsPage({
             <article key={prompt.id} className="card-surface overflow-hidden rounded-[32px] transition duration-500 hover:-translate-y-1 hover:border-brand/40">
               <div className="relative aspect-[4/3] bg-black/40">
                 {prompt.image_url ? (
-                  <Image src={prompt.image_url} alt={prompt.title} fill className="object-cover" sizes="(min-width:1280px) 33vw, (min-width:768px) 50vw, 100vw" />
+                  <SafeImage src={prompt.image_url} alt={prompt.title} fill className="object-cover" sizes="(min-width:1280px) 33vw, (min-width:768px) 50vw, 100vw" />
                 ) : (
                   <div className="grid h-full place-items-center bg-brand/5 px-6 text-center text-sm text-slate-400">Text-only prompt</div>
                 )}

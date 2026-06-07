@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import { SafeImage } from "@/components/safe-image";
 import { redirect } from "next/navigation";
 import { CheckCircle2, ExternalLink, Mail, Sparkles, UserRound } from "lucide-react";
 import { MotionMain, MotionSection } from "@/components/motion-primitives";
@@ -65,7 +65,7 @@ export default async function DashboardPage({
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex items-start gap-4">
             {avatarUrl ? (
-              <Image src={avatarUrl} alt={displayName} width={64} height={64} className="h-16 w-16 rounded-2xl border border-white/10 object-cover" />
+              <SafeImage src={avatarUrl} alt={displayName} width={64} height={64} className="h-16 w-16 rounded-2xl border border-white/10 object-cover" />
             ) : (
               <div className="grid h-16 w-16 place-items-center rounded-2xl border border-brand/30 bg-brand/10 text-lg font-bold text-brand">
                 {getInitials(displayName)}
@@ -169,7 +169,7 @@ export default async function DashboardPage({
               {savedPrompts.map((prompt) => (
                 <Link key={prompt.id} href={prompt.href} className="group card-surface overflow-hidden rounded-[24px] transition duration-500 hover:-translate-y-1 hover:border-brand/40">
                   <div className="aspect-[4/3] overflow-hidden bg-black/30">
-                    <Image src={prompt.image_url} alt={prompt.title} width={640} height={480} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
+                    <SafeImage src={prompt.image_url} alt={prompt.title} width={640} height={480} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
                   </div>
                   <div className="space-y-3 p-4">
                     <div className="flex items-start justify-between gap-3">

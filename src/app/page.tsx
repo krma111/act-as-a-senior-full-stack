@@ -1,4 +1,4 @@
-﻿import Image from "next/image";
+import { SafeImage } from "@/components/safe-image";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Sparkles, TrendingUp, UploadCloud } from "lucide-react";
 import { MotionDiv, MotionMain, MotionSection } from "@/components/motion-primitives";
@@ -75,7 +75,7 @@ export default async function Home({
               <Link href={`/prompt/${promptSlug(heroPrompt)}`} className="hero-float-card card-surface absolute left-8 top-8 block w-[72%] overflow-hidden rounded-[34px] transition duration-500 hover:-translate-y-2">
                 <div className="relative aspect-[4/5] overflow-hidden bg-black/50">
                   {heroPrompt.image_url ? (
-                    <Image src={heroPrompt.image_url} alt={heroPrompt.title} fill className="object-cover" sizes="440px" priority />
+                    <SafeImage src={heroPrompt.image_url} alt={heroPrompt.title} fill className="object-cover" sizes="440px" priority />
                   ) : (
                     <div className="grid h-full place-items-center bg-brand/5 px-8 text-center text-sm text-slate-400">Text-only prompt</div>
                   )}
@@ -105,7 +105,7 @@ export default async function Home({
               >
                 <div className="relative aspect-[4/3] overflow-hidden bg-black/50">
                   {prompt.image_url ? (
-                    <Image src={prompt.image_url} alt={prompt.title} fill className="object-cover" sizes="300px" />
+                    <SafeImage src={prompt.image_url} alt={prompt.title} fill className="object-cover" sizes="300px" />
                   ) : (
                     <div className="grid h-full place-items-center bg-brand/5 px-6 text-center text-xs text-slate-400">Text-only</div>
                   )}

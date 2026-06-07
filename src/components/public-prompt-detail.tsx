@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { SafeImage } from "@/components/safe-image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Flag, Heart, User } from "lucide-react";
@@ -38,7 +38,7 @@ export async function PublicPromptDetail({ idOrSlug, message, error }: { idOrSlu
       <MotionSection className="card-surface overflow-hidden rounded-[34px]">
         <div className="relative aspect-[4/3]">
           {prompt.image_url ? (
-            <Image
+            <SafeImage
               src={prompt.image_url}
               alt={prompt.title}
               fill

@@ -1,4 +1,4 @@
-﻿import Image from "next/image";
+import { SafeImage } from "@/components/safe-image";
 import Link from "next/link";
 import { CheckCircle2, Edit3, RotateCcw, Star, Trash2, XCircle } from "lucide-react";
 import { AdminSubmitButton } from "@/components/admin-action-button";
@@ -94,7 +94,7 @@ export default async function AdminPromptsPage({
               <div className="grid gap-0 lg:grid-cols-[280px_1fr]">
                 <div className="relative aspect-[4/3] bg-black/40 lg:aspect-auto">
                   {prompt.image_url ? (
-                    <Image src={prompt.image_url} alt={prompt.title || "Prompt image"} fill className="object-cover" sizes="(min-width:1024px) 280px, 100vw" />
+                    <SafeImage src={prompt.image_url} alt={prompt.title || "Prompt image"} fill className="object-cover" sizes="(min-width:1024px) 280px, 100vw" />
                   ) : (
                     <div className="grid h-full min-h-[220px] place-items-center bg-brand/5 px-6 text-center text-sm text-slate-400">
                       Text-only prompt

@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { SafeImage } from "@/components/safe-image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Edit3, Heart, Sparkles, Trash2 } from "lucide-react";
@@ -27,7 +27,7 @@ export function PromptCard({ prompt, isAdmin = false }: { prompt: Prompt; isAdmi
       <Link href={href} className="block">
         <div className="relative aspect-[4/3] overflow-hidden bg-slate-950">
           {prompt.image_url ? (
-            <Image
+            <SafeImage
               src={prompt.image_url}
               alt={prompt.title}
               fill

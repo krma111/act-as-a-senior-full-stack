@@ -153,6 +153,22 @@ function isMissingTableError(message?: string | null) {
   return value.includes("schema cache") || value.includes("could not find the table") || value.includes("does not exist");
 }
 
+async function withRetry<T>(label: string, operation: () => Promise<T>, fallback: T, attempts = 2): Promise<T> {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      console.error(`[admin-data] ${label} failed on attempt ${attempt}`, error);
+    }
+  }
+
+  console.error(`[admin-data] ${label} returned fallback after retries`, lastError);
+  return fallback;
+}
+
 function sanitizePromptFilter(value?: string): AdminPromptFilter {
   if (value === "pending" || value === "approved" || value === "rejected" || value === "featured" || value === "deleted") return value;
   return "all";
@@ -170,6 +186,24 @@ function normalizePromptStatus(value?: string | null): AdminPromptStatus {
 
 function emptyPromptCounts(): AdminPromptCounts {
   return { all: 0, pending: 0, approved: 0, rejected: 0, featured: 0, deleted: 0 };
+}
+
+function emptyAdminStats(): AdminStats {
+  return {
+    totalPrompts: 0,
+    pendingPrompts: 0,
+    approvedPrompts: 0,
+    rejectedPrompts: 0,
+    featuredPrompts: 0,
+    deletedPrompts: 0,
+    totalUsers: 0,
+    totalCreators: 0,
+    totalCopies: 0,
+    totalSaves: 0,
+    totalPaidPacks: 0,
+    totalPaymentRequests: 0,
+    totalApprovedSales: 0
+  };
 }
 
 function countsFromRows(rows: Array<{ status?: string | null; featured?: boolean | null; deleted_at?: string | null }>): AdminPromptCounts {
@@ -262,71 +296,88 @@ export async function requireAdmin(nextPath = "/admin") {
 export async function getAdminStats() {
   const { supabase } = await requireAdmin("/admin");
 
-  const [
-    totalPrompts,
-    pendingPrompts,
-    approvedPrompts,
-    rejectedPrompts,
-    featuredPrompts,
-    deletedPrompts,
-    totalUsers,
-    totalCreators,
-    savedPrompts,
-    promptCopies,
-    paidPacks,
-    paymentRequests,
-    approvedSales
-  ] = await Promise.all([
-    supabase.from("prompts").select("id", { count: "exact", head: true }).is("deleted_at", null),
-    supabase.from("prompts").select("id", { count: "exact", head: true }).eq("status", "pending").is("deleted_at", null),
-    supabase.from("prompts").select("id", { count: "exact", head: true }).eq("status", "approved").is("deleted_at", null),
-    supabase.from("prompts").select("id", { count: "exact", head: true }).eq("status", "rejected").is("deleted_at", null),
-    supabase.from("prompts").select("id", { count: "exact", head: true }).eq("featured", true).is("deleted_at", null),
-    supabase.from("prompts").select("id", { count: "exact", head: true }).not("deleted_at", "is", null),
-    supabase.from("profiles").select("id", { count: "exact", head: true }),
-    supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "creator"),
-    supabase.from("saved_prompts").select("id", { count: "exact", head: true }),
-    supabase.from("prompts").select("copy_count"),
-    supabase.from("prompt_packs").select("id", { count: "exact", head: true }).gt("price", 0),
-    supabase.from("payment_requests").select("id", { count: "exact", head: true }),
-    supabase.from("payment_requests").select("id", { count: "exact", head: true }).eq("status", "approved")
-  ]);
+  return withRetry("getAdminStats", async () => {
+    const [
+      totalPrompts,
+      pendingPrompts,
+      approvedPrompts,
+      rejectedPrompts,
+      featuredPrompts,
+      deletedPrompts,
+      totalUsers,
+      totalCreators,
+      savedPrompts,
+      promptCopies,
+      paidPacks,
+      paymentRequests,
+      approvedSales
+    ] = await Promise.all([
+      supabase.from("prompts").select("id", { count: "exact", head: true }).is("deleted_at", null),
+      supabase.from("prompts").select("id", { count: "exact", head: true }).eq("status", "pending").is("deleted_at", null),
+      supabase.from("prompts").select("id", { count: "exact", head: true }).eq("status", "approved").is("deleted_at", null),
+      supabase.from("prompts").select("id", { count: "exact", head: true }).eq("status", "rejected").is("deleted_at", null),
+      supabase.from("prompts").select("id", { count: "exact", head: true }).eq("featured", true).is("deleted_at", null),
+      supabase.from("prompts").select("id", { count: "exact", head: true }).not("deleted_at", "is", null),
+      supabase.from("profiles").select("id", { count: "exact", head: true }),
+      supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "creator"),
+      supabase.from("saved_prompts").select("id", { count: "exact", head: true }),
+      supabase.from("prompts").select("copy_count"),
+      supabase.from("prompt_packs").select("id", { count: "exact", head: true }).gt("price", 0),
+      supabase.from("payment_requests").select("id", { count: "exact", head: true }),
+      supabase.from("payment_requests").select("id", { count: "exact", head: true }).eq("status", "approved")
+    ]);
 
-  return {
-    totalPrompts: totalPrompts.count ?? 0,
-    pendingPrompts: pendingPrompts.count ?? 0,
-    approvedPrompts: approvedPrompts.count ?? 0,
-    rejectedPrompts: rejectedPrompts.count ?? 0,
-    featuredPrompts: featuredPrompts.count ?? 0,
-    deletedPrompts: deletedPrompts.count ?? 0,
-    totalUsers: totalUsers.count ?? 0,
-    totalCreators: totalCreators.count ?? 0,
-    totalCopies: (promptCopies.data ?? []).reduce((total, row) => total + (Number(row.copy_count) || 0), 0),
-    totalSaves: savedPrompts.count ?? 0,
-    totalPaidPacks: paidPacks.error ? 0 : paidPacks.count ?? 0,
-    totalPaymentRequests: paymentRequests.error ? 0 : paymentRequests.count ?? 0,
-    totalApprovedSales: approvedSales.error ? 0 : approvedSales.count ?? 0
-  } satisfies AdminStats;
+    return {
+      totalPrompts: totalPrompts.count ?? 0,
+      pendingPrompts: pendingPrompts.count ?? 0,
+      approvedPrompts: approvedPrompts.count ?? 0,
+      rejectedPrompts: rejectedPrompts.count ?? 0,
+      featuredPrompts: featuredPrompts.count ?? 0,
+      deletedPrompts: deletedPrompts.count ?? 0,
+      totalUsers: totalUsers.count ?? 0,
+      totalCreators: totalCreators.count ?? 0,
+      totalCopies: (promptCopies.data ?? []).reduce((total, row) => total + (Number(row.copy_count) || 0), 0),
+      totalSaves: savedPrompts.count ?? 0,
+      totalPaidPacks: paidPacks.error ? 0 : paidPacks.count ?? 0,
+      totalPaymentRequests: paymentRequests.error ? 0 : paymentRequests.count ?? 0,
+      totalApprovedSales: approvedSales.error ? 0 : approvedSales.count ?? 0
+    } satisfies AdminStats;
+  }, emptyAdminStats());
 }
 
 export async function getAdminSiteSettings() {
   const { supabase } = await requireAdmin("/admin/settings");
-  const { data } = await supabase.from("site_settings").select("*").eq("id", 1).maybeSingle();
+  return withRetry("getAdminSiteSettings", async () => {
+    const { data } = await supabase.from("site_settings").select("*").eq("id", 1).maybeSingle();
 
-  return {
+    return {
+      id: 1,
+      website_name: data?.website_name ?? "PromptVault",
+      logo_text: data?.logo_text ?? "PromptVault",
+      hero_headline: data?.hero_headline ?? "Discover and share powerful image prompts",
+      hero_subheadline: data?.hero_subheadline ?? "Browse approved creator prompts from the live vault.",
+      footer_text: data?.footer_text ?? "Copyright 2026 PromptVault. All rights reserved.",
+      admin_email: "",
+      cta_text: data?.cta_text ?? "Start exploring prompts",
+      empty_state_title: data?.empty_state_title ?? "No prompts yet",
+      empty_state_message: data?.empty_state_message ?? "Approved prompts will appear here.",
+      featured_prompt_ids: Array.isArray(data?.featured_prompt_ids) ? data.featured_prompt_ids : [],
+      trending_prompt_ids: Array.isArray(data?.trending_prompt_ids) ? data.trending_prompt_ids : []
+    } satisfies SiteSettings;
+  }, {
     id: 1,
-    website_name: data?.website_name ?? "PromptVault",
-    logo_text: data?.logo_text ?? "PromptVault",
-    hero_headline: data?.hero_headline ?? "Discover and share powerful image prompts",
-    hero_subheadline: data?.hero_subheadline ?? "Browse approved creator prompts from the live vault.",
-    footer_text: data?.footer_text ?? "Copyright 2026 PromptVault. All rights reserved.",
+    website_name: "PromptVault",
+    logo_text: "PromptVault",
+    hero_headline: "Discover and share powerful image prompts",
+    hero_subheadline: "Browse approved creator prompts from the live vault.",
+    footer_text: "Copyright 2026 PromptVault. All rights reserved.",
     admin_email: "",
-    cta_text: data?.cta_text ?? "Start exploring prompts",
-    empty_state_title: data?.empty_state_title ?? "No prompts yet",
-    empty_state_message: data?.empty_state_message ?? "Approved prompts will appear here.",
-    featured_prompt_ids: Array.isArray(data?.featured_prompt_ids) ? data.featured_prompt_ids : [],
-    trending_prompt_ids: Array.isArray(data?.trending_prompt_ids) ? data.trending_prompt_ids : []
-  } satisfies SiteSettings;
+    cta_text: "Start exploring prompts",
+    empty_state_title: "No prompts yet",
+    empty_state_message: "Approved prompts will appear here.",
+    featured_prompt_ids: [],
+    trending_prompt_ids: []
+  });
 }
 
 export async function getAdminPrompts(status?: string, userId?: string) {
@@ -458,35 +509,39 @@ export async function getAdminUsers() {
 }
 
 async function creatorCopyTotals(supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"], userIds: string[]) {
-  const totals = new Map<string, { copy_total: number; prompt_count: number }>();
-  if (!userIds.length) return totals;
+  return withRetry("creatorCopyTotals", async () => {
+    const totals = new Map<string, { copy_total: number; prompt_count: number }>();
+    if (!userIds.length) return totals;
 
-  const { data } = await supabase.from("prompts").select("user_id,copy_count,deleted_at").in("user_id", userIds);
-  for (const row of (data ?? []) as Array<{ user_id: string; copy_count: number | null; deleted_at?: string | null }>) {
-    if (row.deleted_at) continue;
-    const current = totals.get(row.user_id) ?? { copy_total: 0, prompt_count: 0 };
-    current.copy_total += Number(row.copy_count) || 0;
-    current.prompt_count += 1;
-    totals.set(row.user_id, current);
-  }
+    const { data } = await supabase.from("prompts").select("user_id,copy_count,deleted_at").in("user_id", userIds);
+    for (const row of (data ?? []) as Array<{ user_id: string; copy_count: number | null; deleted_at?: string | null }>) {
+      if (row.deleted_at) continue;
+      const current = totals.get(row.user_id) ?? { copy_total: 0, prompt_count: 0 };
+      current.copy_total += Number(row.copy_count) || 0;
+      current.prompt_count += 1;
+      totals.set(row.user_id, current);
+    }
 
-  return totals;
+    return totals;
+  }, new Map<string, { copy_total: number; prompt_count: number }>());
 }
 
 async function profilesByIds(supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"], userIds: string[]) {
-  const profilesById = new Map<string, Profile>();
-  if (!userIds.length) return profilesById;
+  return withRetry("profilesByIds", async () => {
+    const profilesById = new Map<string, Profile>();
+    if (!userIds.length) return profilesById;
 
-  const profileResult = await supabase.from("profiles").select(profileSelect).in("id", userIds);
-  let profiles: unknown[] | null = profileResult.data;
+    const profileResult = await supabase.from("profiles").select(profileSelect).in("id", userIds);
+    let profiles: unknown[] | null = profileResult.data;
 
-  if (profileResult.error) {
-    const fallback = await supabase.from("profiles").select(fallbackProfileSelect).in("id", userIds);
-    profiles = fallback.data as unknown[] | null;
-  }
+    if (profileResult.error) {
+      const fallback = await supabase.from("profiles").select(fallbackProfileSelect).in("id", userIds);
+      profiles = fallback.data as unknown[] | null;
+    }
 
-  for (const profile of (profiles ?? []) as Profile[]) profilesById.set(profile.id, normalizeProfile(profile));
-  return profilesById;
+    for (const profile of (profiles ?? []) as Profile[]) profilesById.set(profile.id, normalizeProfile(profile));
+    return profilesById;
+  }, new Map<string, Profile>());
 }
 
 function normalizePackStatus(value?: string | null): PackStatus {

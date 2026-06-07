@@ -59,9 +59,14 @@ function StyleCard({ example }: { example: StyleExample }) {
           disabled={pending}
           onClick={() =>
             startTransition(async () => {
-              await navigator.clipboard.writeText(prompt);
-              setCopied(true);
-              toast.success("Style prompt copied");
+              try {
+                await navigator.clipboard.writeText(prompt);
+                setCopied(true);
+                toast.success("Style prompt copied");
+              } catch (error) {
+                console.error("[style-remix] Clipboard copy failed", error);
+                toast.error("Your browser blocked clipboard access.");
+              }
             })
           }
         >
