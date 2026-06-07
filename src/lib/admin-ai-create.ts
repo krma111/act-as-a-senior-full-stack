@@ -67,23 +67,7 @@ function numericSeedFrom(value: string, index: number) {
   return Math.max(hash, index + 1000);
 }
 
-function dimensionsForAspectRatio(aspectRatio: string) {
-  switch (aspectRatio) {
-    case "9:16":
-      return { width: 900, height: 1600 };
-    case "16:9":
-      return { width: 1600, height: 900 };
-    case "4:5":
-      return { width: 1080, height: 1350 };
-    case "3:4":
-      return { width: 960, height: 1280 };
-    default:
-      return { width: 1024, height: 1024 };
-  }
-}
-
 function relatedImageUrl(idea: string, category: string, aspectRatio: string, angle: string, index: number) {
-  const { width, height } = dimensionsForAspectRatio(aspectRatio);
   const seed = numericSeedFrom(`${idea}-${category}-${angle}`, index);
   const imagePrompt = [
     titleCase(idea) || "Premium creator visual",
@@ -97,7 +81,14 @@ function relatedImageUrl(idea: string, category: string, aspectRatio: string, an
     .filter(Boolean)
     .join(", ");
 
-  return `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=${width}&height=${height}&seed=${seed}&nologo=true&enhance=true&safe=true`;
+  const params = new URLSearchParams({
+    title: titleCase(idea) || "Premium creator visual",
+    category,
+    aspect: aspectRatio,
+    seed: `${seed}-${imagePrompt}`
+  });
+
+  return `/api/generated-preview?${params.toString()}`;
 }
 
 function tagsForIdea(idea: string, category: string, index: number) {

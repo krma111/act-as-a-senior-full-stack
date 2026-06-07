@@ -13,6 +13,7 @@ type SafeImageProps = Omit<ComponentPropsWithoutRef<"img">, "src" | "alt"> & {
 
 function isSafeImageSource(value?: string | null) {
   if (!value) return false;
+  if (value.startsWith("/") && !value.startsWith("//")) return true;
 
   try {
     const url = new URL(value);
