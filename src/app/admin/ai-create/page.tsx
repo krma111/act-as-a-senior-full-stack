@@ -26,7 +26,7 @@ export default async function AdminAiCreatePage() {
             </p>
             <h1 className="hero-title mt-3 text-3xl font-black sm:text-5xl">Create prompt drafts from one idea</h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-              Generate a complete prompt listing structure with mock data, edit each draft, remove weak ideas, then save selected drafts as pending prompts.
+              Generate complete prompt listing drafts with idea-based image previews, edit each draft, remove weak ideas, then save selected drafts as pending prompts.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -51,4 +51,3 @@ export default async function AdminAiCreatePage() {
     </MotionMain>
   );
 }
-

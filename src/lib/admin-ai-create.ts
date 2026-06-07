@@ -56,8 +56,48 @@ function titleCase(value: string) {
     .join(" ");
 }
 
-function seedFrom(value: string, index: number) {
-  return cleanWords(`${value}-${index}`).replace(/\s+/g, "-") || `promptvault-draft-${index}`;
+function numericSeedFrom(value: string, index: number) {
+  const source = `${cleanWords(value)}-${index}`;
+  let hash = 0;
+
+  for (let charIndex = 0; charIndex < source.length; charIndex += 1) {
+    hash = (hash * 31 + source.charCodeAt(charIndex)) % 100000;
+  }
+
+  return Math.max(hash, index + 1000);
+}
+
+function dimensionsForAspectRatio(aspectRatio: string) {
+  switch (aspectRatio) {
+    case "9:16":
+      return { width: 900, height: 1600 };
+    case "16:9":
+      return { width: 1600, height: 900 };
+    case "4:5":
+      return { width: 1080, height: 1350 };
+    case "3:4":
+      return { width: 960, height: 1280 };
+    default:
+      return { width: 1024, height: 1024 };
+  }
+}
+
+function relatedImageUrl(idea: string, category: string, aspectRatio: string, angle: string, index: number) {
+  const { width, height } = dimensionsForAspectRatio(aspectRatio);
+  const seed = numericSeedFrom(`${idea}-${category}-${angle}`, index);
+  const imagePrompt = [
+    titleCase(idea) || "Premium creator visual",
+    category,
+    angle,
+    "professional AI image preview",
+    "cinematic lighting",
+    "high detail",
+    "premium composition"
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=${width}&height=${height}&seed=${seed}&nologo=true&enhance=true&safe=true`;
 }
 
 function tagsForIdea(idea: string, category: string, index: number) {
@@ -86,7 +126,6 @@ export function generatePromptDrafts(
     const angle = styleAngles[index % styleAngles.length];
     const title = `${safeIdea} ${index + 1}`;
     const tags = tagsForIdea(idea, safeCategory, index);
-    const seed = seedFrom(`${safeIdea}-${angle}`, index + 1);
 
     return {
       title,
@@ -99,7 +138,7 @@ export function generatePromptDrafts(
       tags,
       category: safeCategory,
       aspectRatio: safeAspectRatio,
-      imageUrl: `https://picsum.photos/seed/${encodeURIComponent(seed)}/900/1200`,
+      imageUrl: relatedImageUrl(safeIdea, safeCategory, safeAspectRatio, angle, index + 1),
       status: "pending"
     };
   });

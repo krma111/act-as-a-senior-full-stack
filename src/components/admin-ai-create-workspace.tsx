@@ -165,10 +165,7 @@ export function AdminAiCreateWorkspace({ demoMode = false }: { demoMode?: boolea
           </div>
         </div>
 
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-slate-400">
-            Mock generation only. The output format is ready for a real AI generator later.
-          </p>
+        <div className="mt-6 flex justify-end">
           <button className="btn-primary" onClick={generateDrafts} disabled={isGenerating}>
             {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {isGenerating ? "Generating..." : "Generate"}
