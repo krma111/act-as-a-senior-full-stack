@@ -95,14 +95,36 @@ export async function createPrompt(formData: FormData) {
   if (validationError) redirectWithMessage("/prompts/new", validationError);
 
   const file = formData.get("image");
-  if (!(file instanceof File) || file.size === 0) {
-    redirectWithMessage("/prompts/new", "Example image is required.");
-  }
-  if (!file.type.startsWith("image/")) redirectWithMessage("/prompts/new", "Upload a valid image file.");
-  if (file.size > 8 * 1024 * 1024) redirectWithMessage("/prompts/new", "Images must be smaller than 8 MB.");
+  let imageUrl: string | null = null;
 
-  if (isPreviewMode) {
-    redirect(`/login?message=${encodeURIComponent("Supabase is not configured.")}`);
+  // Make image optional - only process if file exists
+  if (file instanceof File && file.size > 0) {
+    if (!file.type.startsWith("image/")) redirectWithMessage("/prompts/new", "Upload a valid image file.");
+    if (file.size > 8 * 1024 * 1024) redirectWithMessage("/prompts/new", "Images must be smaller than 8 MB.");
+
+    if (isPreviewMode) {
+      redirect(`/login?message=${encodeURIComponent("Supabase is not configured.")}`);
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+    if (!user) redirect("/login?next=/prompts/new");
+
+    const extension = (file.name.split(".").pop() ?? "png").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
+    const filePath = `${user.id}/${crypto.randomUUID()}.${extension}`;
+    const { error: uploadError } = await supabase.storage
+      .from("prompt-images")
+      .upload(filePath, file, { upsert: false, contentType: file.type });
+
+    if (uploadError) redirectWithMessage("/prompts/new", uploadError.message);
+
+    const { data: publicUrl } = supabase.storage.from("prompt-images").getPublicUrl(filePath);
+    imageUrl = publicUrl.publicUrl;
+  } else {
+    // If no image provided, set imageUrl to null
+    imageUrl = null;
   }
 
   const supabase = await createClient();
@@ -111,15 +133,6 @@ export async function createPrompt(formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/prompts/new");
 
-  const extension = (file.name.split(".").pop() ?? "png").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
-  const filePath = `${user.id}/${crypto.randomUUID()}.${extension}`;
-  const { error: uploadError } = await supabase.storage
-    .from("prompt-images")
-    .upload(filePath, file, { upsert: false, contentType: file.type });
-
-  if (uploadError) redirectWithMessage("/prompts/new", uploadError.message);
-
-  const { data: publicUrl } = supabase.storage.from("prompt-images").getPublicUrl(filePath);
   const { data, error } = await supabase
     .from("prompts")
     .insert({
@@ -127,11 +140,12 @@ export async function createPrompt(formData: FormData) {
       title: asString(formData, "title"),
       prompt_text: asString(formData, "prompt_text"),
       negative_prompt: asString(formData, "negative_prompt") || null,
-      image_url: publicUrl.publicUrl,
+      image_url: imageUrl,
       category_id: asString(formData, "category_id") || null,
       tags: tagsFrom(asString(formData, "tags")),
       ai_model: asString(formData, "ai_model"),
-      visibility: asString(formData, "visibility") === "private" ? "private" : "public"
+      visibility: asString(formData, "visibility") === "private" ? "private" : "public",
+      status: "pending"
     })
     .select("id")
     .single();

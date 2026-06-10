@@ -142,6 +142,39 @@ export default async function AdminDashboard({
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <section className="panel rounded-lg p-6">
+          <h2 className="text-xl font-bold">Pending Review</h2>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[780px] text-left text-sm">
+              <thead className="text-slate-400">
+                <tr><th className="py-3">Title</th><th>Creator</th><th>Actions</th></tr>
+              </thead>
+              <tbody className="divide-y divide-white/10">
+                {((prompts ?? []) as Prompt[]).filter(p => p.status === "pending").map((prompt) => (
+                  <tr key={prompt.id}>
+                    <td className="py-3 font-medium">{prompt.title}</td>
+                    <td>{prompt.users?.email}</td>
+                    <td className="flex gap-2 py-3">
+                      <form action={adminTogglePromptFlag}>
+                        <input type="hidden" name="id" value={prompt.id} />
+                        <input type="hidden" name="field" value="featured" />
+                        <input type="hidden" name="value" value="true" />
+                        <button className="btn-primary">Approve</button>
+                      </form>
+                      <form action={adminTogglePromptFlag}>
+                        <input type="hidden" name="id" value={prompt.id} />
+                        <input type="hidden" name="field" value="hidden" />
+                        <input type="hidden" name="value" value="true" />
+                        <button className="btn-ghost text-red-200">Reject</button>
+                      </form>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="panel rounded-lg p-6">
           <h2 className="text-xl font-bold">Users</h2>
           <div className="mt-4 grid gap-3">
             {((users ?? []) as Profile[]).map((user) => (
@@ -152,6 +185,7 @@ export default async function AdminDashboard({
             ))}
           </div>
         </section>
+
         <section className="panel rounded-lg p-6">
           <h2 className="text-xl font-bold">Reports</h2>
           <div className="mt-4 grid gap-3">
