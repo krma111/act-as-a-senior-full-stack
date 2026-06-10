@@ -70,3 +70,12 @@ export function getResendApiKey() {
   if (!value) throw new Error("Missing required environment variable: RESEND_API_KEY");
   return value;
 }
+
+function getRawGeminiApiKey() {
+  return cleanEnv(process.env.GEMINI_API_KEY);
+}
+
+export function hasGeminiApiKey() {
+  const value = getRawGeminiApiKey();
+  return value.length > 5 && !value.includes("<") && !value.toLowerCase().includes("your-");
+}

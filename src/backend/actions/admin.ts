@@ -8,7 +8,7 @@ import { sendFollowerApprovedPromptEmail, sendPromptApprovedEmail, sendRejection
 import { siteUrl } from "@/backend/env";
 import { promptSlug } from "@/shared/constants/slugs";
 
-type AdminSupabase = Awaited<ReturnType<typeof requireAdmin>>["supabase"];
+export type AdminSupabase = Awaited<ReturnType<typeof requireAdmin>>["supabase"];
 type ModeratedPrompt = {
   id: string;
   title: string;
@@ -114,7 +114,7 @@ function slugFrom(value: string) {
     .slice(0, 80);
 }
 
-async function logAdminAction(
+export async function logAdminAction(
   supabase: AdminSupabase,
   adminUserId: string,
   actionType: string,
