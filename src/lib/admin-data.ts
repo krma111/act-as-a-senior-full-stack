@@ -212,13 +212,12 @@ function countsFromRows(rows: Array<{ status?: string | null; featured?: boolean
   for (const row of rows) {
     if (row.deleted_at) {
       counts.deleted += 1;
-      counts.all += 1;
       continue;
     }
 
     const status = normalizePromptStatus(row.status);
     counts[status] += 1;
-    counts.all += 1;
+    if (status !== "rejected") counts.all += 1;
     if (row.featured) counts.featured += 1;
   }
 
@@ -232,7 +231,7 @@ function countsFromRpcRows(rows: Array<{ status?: string | null; count?: number 
     const status = normalizePromptStatus(row.status ?? "pending");
     const count = Number(row.count) || 0;
     counts[status] += count;
-    counts.all += count;
+    if (status !== "rejected") counts.all += count;
   }
 
   return counts;
@@ -433,7 +432,7 @@ export async function getAdminPrompts(status?: string, userId?: string) {
   else if (activeStatus === "deleted") query = query.not("deleted_at", "is", null);
   else if (activeStatus !== "all") query = query.eq("status", activeStatus).is("deleted_at", null);
 
-  if (activeStatus === "all") query = query.is("deleted_at", null);
+  if (activeStatus === "all") query = query.is("deleted_at", null).neq("status", "rejected");
   if (userId) query = query.eq("user_id", userId);
 
   const { data, error } = await query;
