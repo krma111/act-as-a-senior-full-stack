@@ -11,37 +11,13 @@ function aspectRatioToDimensions(aspectRatio: string): { width: number; height: 
   return { width: 1024, height: 1024 };
 }
 
-function sanitizeForUrl(text: string): string {
-  return text
-    .replace(/[<>"']/g, "")
-    .replace(/[^\w\s,.-]/g, "")
-    .trim()
-    .slice(0, 500);
-}
-
-export async function generateImage(
-  promptText: string,
-  aspectRatio: string
-): Promise<string | null> {
-  const { width, height } = aspectRatioToDimensions(aspectRatio);
-  const safePrompt = sanitizeForUrl(promptText);
-
+export function generateImageUrl(promptText: string, aspectRatio: string): string | null {
+  const safePrompt = promptText.trim().slice(0, 800);
   if (!safePrompt) return null;
 
+  const { width, height } = aspectRatioToDimensions(aspectRatio);
   const encoded = encodeURIComponent(safePrompt);
   const seed = Math.floor(Math.random() * 100000);
-  const url = `https://image.pollinations.ai/prompt/${encoded}?width=${width}&height=${height}&seed=${seed}&nologo=true`;
 
-  try {
-    const response = await fetch(url, {
-      method: "HEAD",
-      signal: AbortSignal.timeout(8000)
-    });
-
-    if (!response.ok) return null;
-
-    return url;
-  } catch {
-    return null;
-  }
+  return `https://image.pollinations.ai/prompt/${encoded}?width=${width}&height=${height}&seed=${seed}`;
 }

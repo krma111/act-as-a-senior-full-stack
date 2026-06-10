@@ -2,7 +2,7 @@
 
 import { requireAdmin } from "@/backend/data/admin";
 import { generatePromptFromTopic } from "@/backend/ai/generate";
-import { generateImage } from "@/backend/ai/image";
+import { generateImageUrl } from "@/backend/ai/image";
 import { revalidatePath } from "next/cache";
 import { logAdminAction } from "@/backend/actions/admin";
 
@@ -23,7 +23,7 @@ export async function generateAIPrompt(formData: FormData) {
   try {
     const promptData = await generatePromptFromTopic(topic, category, aspectRatio);
 
-    const imageUrl = await generateImage(promptData.prompt_text, aspectRatio);
+    const imageUrl = generateImageUrl(promptData.prompt_text, aspectRatio);
 
     return {
       ok: true,
