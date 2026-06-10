@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 
 export function PasswordField({
@@ -40,15 +41,17 @@ export function PasswordField({
           disabled={disabled}
           required
         />
-        <button
+        <motion.button
           type="button"
           className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-white"
           onClick={() => setVisible((current) => !current)}
           disabled={disabled}
           aria-label={visible ? "Hide password" : "Show password"}
+          whileHover={disabled ? undefined : { scale: 1.1 }}
+          whileTap={disabled ? undefined : { scale: 0.9 }}
         >
           {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-        </button>
+        </motion.button>
       </div>
     </label>
   );

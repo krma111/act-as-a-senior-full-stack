@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SafeImage } from "@/components/safe-image";
 import { Toaster } from "sonner";
 import { LogOut, ShieldCheck } from "lucide-react";
 import "./globals.css";
@@ -41,14 +42,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en">
       <body className="min-h-screen font-sans antialiased">
         <div className="app-shell min-h-screen">
-          <header className="sticky top-0 z-40 border-b border-white/10 bg-[linear-gradient(180deg,rgba(5,8,11,0.96),rgba(5,8,11,0.82))] backdrop-blur-xl">
+          <div className="premium-noise" />
+          <header className="glass-nav sticky top-0 z-40 border-b border-white/10 backdrop-blur-2xl">
             <nav className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:flex-nowrap lg:px-8">
-              <Link href="/" className="flex items-center gap-3 text-lg font-bold tracking-normal text-white">
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand text-slate-950 shadow-glow">P</span>
+              <Link href="/" className="group flex items-center gap-3 text-lg font-bold tracking-normal text-white">
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand text-slate-950 shadow-glow transition duration-300 group-hover:scale-105 group-hover:rotate-3">P</span>
                 {settings.logo_text}
               </Link>
 
               <div className="flex flex-wrap items-center gap-2">
+                <Link href="/leaderboard" className="btn-ghost">
+                  Leaderboard
+                </Link>
                 {user ? (
                   <>
                     {profile?.role === "admin" ? (
@@ -57,9 +62,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                       </Link>
                     ) : null}
                     <Link href="/dashboard" className="btn-ghost">Dashboard</Link>
-                    <div className="hidden items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 md:flex">
+                    <div className="hidden items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.055] px-3 py-2 shadow-[0_18px_45px_rgba(0,0,0,0.26)] backdrop-blur-xl md:flex">
                       {avatarUrl ? (
-                        <img src={avatarUrl} alt={displayName} className="h-8 w-8 rounded-xl border border-white/10 object-cover" />
+                        <SafeImage src={avatarUrl} alt={displayName} width={32} height={32} className="h-8 w-8 rounded-xl border border-white/10 object-cover" />
                       ) : (
                         <span className="grid h-8 w-8 place-items-center rounded-xl bg-brand/10 text-xs font-bold text-brand">
                           {getInitials(displayName)}
@@ -87,7 +92,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </nav>
           </header>
           {children}
-          <footer className="border-t border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-slate-400 backdrop-blur">
+          <footer className="border-t border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-slate-400 backdrop-blur-xl">
+            <div className="soft-divider mx-auto mb-6 max-w-4xl" />
             {settings.footer_text}
           </footer>
         </div>

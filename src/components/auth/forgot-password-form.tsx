@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
+import { getClientAuthErrorMessage } from "@/lib/auth/client-errors";
 import { getAuthErrorMessage } from "@/lib/auth/errors";
 import { getPasswordResetRedirectUrl } from "@/lib/auth/urls";
 import { getEmailValidationError, normalizeEmail } from "@/lib/auth/validation";
@@ -59,7 +60,7 @@ export function ForgotPasswordForm({
 
       toast.success("Password reset email sent.");
     } catch (error) {
-      const message = getAuthErrorMessage(error instanceof Error ? error.message : "Unable to send reset email.");
+      const message = getClientAuthErrorMessage(error, "Unable to send reset email.");
       setFormError(message);
       toast.error(message);
     } finally {

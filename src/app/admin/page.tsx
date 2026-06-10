@@ -1,219 +1,154 @@
-import { EyeOff, Sparkles, Trash2 } from "lucide-react";
-import {
-  adminDeletePrompt,
-  adminHideReportedPrompt,
-  adminTogglePromptFlag,
-  adminUpdateReport,
-  assertAdmin,
-  deleteCategory,
-  saveSiteSettings,
-  upsertCategory
-} from "@/lib/actions";
-import { hasSupabaseServiceRoleKey } from "@/lib/env";
-import { createAdminClient } from "@/lib/supabase/admin";
-import type { Category, Prompt, Profile, ReportWithRelations, SiteSettings } from "@/lib/types";
+import Link from "next/link";
+import { Bot, Boxes, CreditCard, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
+import { AdminTabs } from "@/components/admin-tabs";
+import { MotionMain, MotionSection } from "@/components/motion-primitives";
+import { updateSiteSettings } from "@/lib/admin-actions";
+import { getAdminSiteSettings, getAdminStats, requireAdmin } from "@/lib/admin-data";
 
-export default async function AdminDashboard({
+export const dynamic = "force-dynamic";
+
+function StatCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="card-surface rounded-[24px] p-5">
+      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand">{label}</p>
+      <p className="mt-3 text-3xl font-black text-white">{value}</p>
+    </div>
+  );
+}
+
+export default async function AdminPage({
   searchParams
 }: {
-  searchParams: Promise<{ message?: string }>;
+  searchParams: Promise<{ message?: string; error?: string }>;
 }) {
   const params = await searchParams;
-  await assertAdmin();
-
-  if (!hasSupabaseServiceRoleKey) {
-    return (
-      <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
-        <section className="panel rounded-lg p-6">
-          <p className="text-sm uppercase tracking-wide text-brand">Admin</p>
-          <h1 className="mt-2 text-3xl font-bold">Supabase service role is not configured</h1>
-          <p className="mt-2 text-slate-400">
-            Add the server-only service role key in Vercel before using admin moderation tools.
-          </p>
-        </section>
-      </main>
-    );
-  }
-
-  const admin = createAdminClient();
-  const [{ data: settings }, { data: categories }, { data: users }, { data: prompts }, { data: reports }] = await Promise.all([
-    admin.from("site_settings").select("*").eq("id", 1).single(),
-    admin.from("categories").select("*").order("name"),
-    admin.from("users").select("*").order("created_at", { ascending: false }),
-    admin.from("prompts").select("*, categories(*), users(*)").order("created_at", { ascending: false }),
-    admin.from("reports").select("*, prompts(id,title,hidden), users(email)").order("created_at", { ascending: false })
-  ]);
-
-  const siteSettings = settings as SiteSettings | null;
-  const settingFields: Array<[keyof Pick<SiteSettings, "website_name" | "logo_text" | "hero_headline" | "hero_subheadline" | "footer_text">, string]> = [
-    ["website_name", "Website name"],
-    ["logo_text", "Logo text"],
-    ["hero_headline", "Hero headline"],
-    ["hero_subheadline", "Hero subheadline"],
-    ["footer_text", "Footer text"]
-  ];
+  await requireAdmin("/admin");
+  const [stats, settings] = await Promise.all([getAdminStats(), getAdminSiteSettings()]);
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mb-8">
-        <p className="text-sm uppercase tracking-wide text-brand">Admin</p>
-        <h1 className="text-3xl font-black">PromptVault control panel</h1>
-        {params.message && <p className="mt-4 rounded-lg border border-brand/30 bg-brand/10 p-3 text-sm text-brand">{params.message}</p>}
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-        <form action={saveSiteSettings} className="panel space-y-4 rounded-lg p-6">
-          <h2 className="text-xl font-bold">Website settings</h2>
-          {settingFields.map(([name, label]) => (
-            <label key={name} className="block space-y-2">
-              <span className="label">{label}</span>
-              <input className="field" name={name} defaultValue={siteSettings?.[name] ?? ""} required />
-            </label>
-          ))}
-          <button className="btn-primary">Save settings</button>
-        </form>
-
-        <section className="panel rounded-lg p-6">
-          <h2 className="text-xl font-bold">Categories</h2>
-          <form action={upsertCategory} className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-            <input className="field" name="name" placeholder="Category name" required />
-            <input className="field" name="slug" placeholder="slug" required />
-            <button className="btn-primary">Add</button>
-            <textarea className="field sm:col-span-3" name="description" placeholder="Short description" />
-          </form>
-          <div className="mt-5 grid gap-3">
-            {((categories ?? []) as Category[]).map((category) => (
-              <div key={category.id} className="rounded-lg border border-white/10 bg-white/[0.04] p-3">
-                <form action={upsertCategory} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-                  <input type="hidden" name="id" value={category.id} />
-                  <input className="field" name="name" defaultValue={category.name} />
-                  <input className="field" name="slug" defaultValue={category.slug} />
-                  <button className="btn-ghost">Update</button>
-                  <input className="field sm:col-span-3" name="description" defaultValue={category.description ?? ""} />
-                </form>
-                <form action={deleteCategory} className="mt-2">
-                  <input type="hidden" name="id" value={category.id} />
-                  <button className="btn-ghost text-red-200"><Trash2 className="h-4 w-4" /> Delete category</button>
-                </form>
-              </div>
-            ))}
+    <MotionMain className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <AdminTabs active="Overview" />
+      <MotionSection className="card-surface rounded-[32px] p-6 sm:p-8">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand">Admin console</p>
+            <h1 className="hero-title mt-2 text-3xl font-black">PromptVault moderation</h1>
+            <p className="mt-2 max-w-2xl text-sm text-slate-400">Real production metrics from Supabase. No demo stats or fake moderation data.</p>
           </div>
-        </section>
-      </div>
-
-      <section className="mt-8 panel rounded-lg p-6">
-        <h2 className="text-xl font-bold">Prompts</h2>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[780px] text-left text-sm">
-            <thead className="text-slate-400">
-              <tr><th className="py-3">Title</th><th>Creator</th><th>Stats</th><th>Status</th><th>Actions</th></tr>
-            </thead>
-            <tbody className="divide-y divide-white/10">
-              {((prompts ?? []) as Prompt[]).map((prompt) => (
-                <tr key={prompt.id}>
-                  <td className="py-3 font-medium">{prompt.title}</td>
-                  <td>{prompt.users?.email}</td>
-                  <td>{prompt.like_count} likes, {prompt.copy_count} copies</td>
-                  <td>{prompt.featured ? "Featured" : "Standard"} / {prompt.hidden ? "Hidden" : "Visible"}</td>
-                  <td className="flex gap-2 py-3">
-                    <form action={adminTogglePromptFlag}>
-                      <input type="hidden" name="id" value={prompt.id} />
-                      <input type="hidden" name="field" value="featured" />
-                      <input type="hidden" name="value" value={String(!prompt.featured)} />
-                      <button className="btn-ghost"><Sparkles className="h-4 w-4" /> Feature</button>
-                    </form>
-                    <form action={adminTogglePromptFlag}>
-                      <input type="hidden" name="id" value={prompt.id} />
-                      <input type="hidden" name="field" value="hidden" />
-                      <input type="hidden" name="value" value={String(!prompt.hidden)} />
-                      <button className="btn-ghost"><EyeOff className="h-4 w-4" /> Hide</button>
-                    </form>
-                    <form action={adminDeletePrompt}>
-                      <input type="hidden" name="id" value={prompt.id} />
-                      <button className="btn-ghost text-red-200"><Trash2 className="h-4 w-4" /> Delete</button>
-                    </form>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/admin/ai-create" className="btn-primary">
+              <Bot className="h-4 w-4" />
+              AI create
+            </Link>
+            <Link href="/admin/prompts" className="btn-primary">
+              <Sparkles className="h-4 w-4" />
+              Manage prompts
+            </Link>
+            <Link href="/admin/users" className="btn-ghost">
+              <UsersRound className="h-4 w-4" />
+              Manage users
+            </Link>
+            <Link href="/admin/packs" className="btn-ghost">
+              <Boxes className="h-4 w-4" />
+              Packs
+            </Link>
+            <Link href="/admin/payments" className="btn-ghost">
+              <CreditCard className="h-4 w-4" />
+              Payments
+            </Link>
+          </div>
         </div>
-      </section>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        <section className="panel rounded-lg p-6">
-          <h2 className="text-xl font-bold">Pending Review</h2>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full min-w-[780px] text-left text-sm">
-              <thead className="text-slate-400">
-                <tr><th className="py-3">Title</th><th>Creator</th><th>Actions</th></tr>
-              </thead>
-              <tbody className="divide-y divide-white/10">
-                {((prompts ?? []) as Prompt[]).filter(p => p.status === "pending").map((prompt) => (
-                  <tr key={prompt.id}>
-                    <td className="py-3 font-medium">{prompt.title}</td>
-                    <td>{prompt.users?.email}</td>
-                    <td className="flex gap-2 py-3">
-                      <form action={adminTogglePromptFlag}>
-                        <input type="hidden" name="id" value={prompt.id} />
-                        <input type="hidden" name="field" value="featured" />
-                        <input type="hidden" name="value" value="true" />
-                        <button className="btn-primary">Approve</button>
-                      </form>
-                      <form action={adminTogglePromptFlag}>
-                        <input type="hidden" name="id" value={prompt.id} />
-                        <input type="hidden" name="field" value="hidden" />
-                        <input type="hidden" name="value" value="true" />
-                        <button className="btn-ghost text-red-200">Reject</button>
-                      </form>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {(params.message || params.error) && (
+          <div className={`mt-6 rounded-2xl border p-4 text-sm ${params.error ? "border-red-500/30 bg-red-500/10 text-red-100" : "border-brand/30 bg-brand/10 text-brand"}`}>
+            {params.error ?? params.message}
           </div>
-        </section>
+        )}
+      </MotionSection>
 
-        <section className="panel rounded-lg p-6">
-          <h2 className="text-xl font-bold">Users</h2>
-          <div className="mt-4 grid gap-3">
-            {((users ?? []) as Profile[]).map((user) => (
-              <div key={user.id} className="rounded-lg border border-white/10 bg-white/[0.04] p-3">
-                <p className="font-semibold">{user.full_name ?? user.display_name ?? user.email}</p>
-                <p className="text-sm text-slate-400">{user.email} | {user.role}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+      <MotionSection className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Total prompts" value={stats.totalPrompts} />
+        <StatCard label="Pending" value={stats.pendingPrompts} />
+        <StatCard label="Approved" value={stats.approvedPrompts} />
+        <StatCard label="Rejected" value={stats.rejectedPrompts} />
+        <StatCard label="Featured" value={stats.featuredPrompts} />
+        <StatCard label="Deleted" value={stats.deletedPrompts} />
+        <StatCard label="Users" value={stats.totalUsers} />
+        <StatCard label="Creators" value={stats.totalCreators} />
+        <StatCard label="Copies" value={stats.totalCopies} />
+        <StatCard label="Saves" value={stats.totalSaves} />
+        <StatCard label="Paid packs" value={stats.totalPaidPacks} />
+        <StatCard label="Payment requests" value={stats.totalPaymentRequests} />
+        <StatCard label="Approved sales" value={stats.totalApprovedSales} />
+      </MotionSection>
 
-        <section className="panel rounded-lg p-6">
-          <h2 className="text-xl font-bold">Reports</h2>
-          <div className="mt-4 grid gap-3">
-            {((reports ?? []) as ReportWithRelations[]).map((report) => (
-              <div key={report.id} className="rounded-lg border border-white/10 bg-white/[0.04] p-3">
-                <p className="font-semibold">{report.prompts?.title ?? "Deleted prompt"}</p>
-                <p className="text-sm text-slate-400">{report.reason}</p>
-                <p className="mt-1 text-xs text-slate-500">By {report.users?.email} | {report.status}</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {report.prompt_id && (
-                    <form action={adminHideReportedPrompt}>
-                      <input type="hidden" name="prompt_id" value={report.prompt_id} />
-                      <input type="hidden" name="report_id" value={report.id} />
-                      <button className="btn-ghost"><EyeOff className="h-4 w-4" /> Hide prompt</button>
-                    </form>
-                  )}
-                  <form action={adminUpdateReport}>
-                    <input type="hidden" name="id" value={report.id} />
-                    <input type="hidden" name="status" value={report.status === "resolved" ? "open" : "resolved"} />
-                    <button className="btn-ghost">{report.status === "resolved" ? "Reopen" : "Resolve"}</button>
-                  </form>
-                </div>
-              </div>
-            ))}
-            {!reports?.length && <p className="text-slate-400">No reports yet.</p>}
+      <MotionSection className="mt-8 grid gap-5 lg:grid-cols-2">
+        <Link href="/admin/prompts?status=pending" className="card-surface group rounded-[28px] p-6 transition hover:border-brand/40">
+          <ShieldCheck className="h-8 w-8 text-brand" />
+          <h2 className="mt-4 text-2xl font-bold text-white">Review pending prompts</h2>
+          <p className="mt-2 text-sm text-slate-400">Approve, reject with a reason, feature, edit, or delete creator submissions.</p>
+        </Link>
+        <Link href="/admin/users" className="card-surface group rounded-[28px] p-6 transition hover:border-brand/40">
+          <UsersRound className="h-8 w-8 text-brand" />
+          <h2 className="mt-4 text-2xl font-bold text-white">Manage user roles</h2>
+          <p className="mt-2 text-sm text-slate-400">View real profiles and change users between user, creator, and admin roles.</p>
+        </Link>
+        <Link href="/admin/packs?status=pending" className="card-surface group rounded-[28px] p-6 transition hover:border-brand/40">
+          <Boxes className="h-8 w-8 text-brand" />
+          <h2 className="mt-4 text-2xl font-bold text-white">Review prompt packs</h2>
+          <p className="mt-2 text-sm text-slate-400">Approve or reject creator packs. Paid packs must include at least 5 prompts.</p>
+        </Link>
+        <Link href="/admin/payments?status=pending" className="card-surface group rounded-[28px] p-6 transition hover:border-brand/40">
+          <CreditCard className="h-8 w-8 text-brand" />
+          <h2 className="mt-4 text-2xl font-bold text-white">Approve payments</h2>
+          <p className="mt-2 text-sm text-slate-400">Review manual payment requests and grant paid pack access.</p>
+        </Link>
+      </MotionSection>
+
+      <MotionSection className="card-surface mt-8 rounded-[32px] p-6 sm:p-8">
+        <div className="mb-5">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand">Site content</p>
+          <h2 className="mt-2 text-2xl font-bold text-white">Edit website text</h2>
+          <p className="mt-2 text-sm text-slate-400">Update core homepage, logo, and footer wording from the admin panel.</p>
+        </div>
+        <form action={updateSiteSettings} className="grid gap-4">
+          <label className="block space-y-2">
+            <span className="label">Website name</span>
+            <input className="field" name="website_name" defaultValue={settings.website_name} required />
+          </label>
+          <label className="block space-y-2">
+            <span className="label">Logo text</span>
+            <input className="field" name="logo_text" defaultValue={settings.logo_text} required />
+          </label>
+          <label className="block space-y-2">
+            <span className="label">Hero headline</span>
+            <input className="field" name="hero_headline" defaultValue={settings.hero_headline} required />
+          </label>
+          <label className="block space-y-2">
+            <span className="label">Hero subheadline</span>
+            <textarea className="field min-h-24" name="hero_subheadline" defaultValue={settings.hero_subheadline} required />
+          </label>
+          <label className="block space-y-2">
+            <span className="label">Footer text</span>
+            <input className="field" name="footer_text" defaultValue={settings.footer_text} required />
+          </label>
+          <label className="block space-y-2">
+            <span className="label">CTA text</span>
+            <input className="field" name="cta_text" defaultValue={settings.cta_text} required />
+          </label>
+          <label className="block space-y-2">
+            <span className="label">Empty state title</span>
+            <input className="field" name="empty_state_title" defaultValue={settings.empty_state_title} required />
+          </label>
+          <label className="block space-y-2">
+            <span className="label">Empty state message</span>
+            <input className="field" name="empty_state_message" defaultValue={settings.empty_state_message} required />
+          </label>
+          <div>
+            <button className="btn-primary">Save site text</button>
           </div>
-        </section>
-      </div>
-    </main>
+        </form>
+      </MotionSection>
+    </MotionMain>
   );
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MotionDiv, MotionMain } from "@/components/motion-primitives";
 
 export function AuthShell({
   eyebrow,
@@ -14,7 +15,7 @@ export function AuthShell({
   children: React.ReactNode;
 }) {
   return (
-    <main className="relative overflow-hidden px-4 py-12 sm:px-6 lg:px-8 lg:py-20">
+    <MotionMain className="relative overflow-hidden px-4 py-12 sm:px-6 lg:px-8 lg:py-20">
       <div className="hero-grid opacity-50" />
       <div className="hero-scan opacity-60" />
       <div className="pointer-events-none absolute left-1/2 top-0 h-64 w-64 -translate-x-1/2 rounded-full bg-brand/15 blur-3xl" />
@@ -44,17 +45,17 @@ export function AuthShell({
         </section>
 
         <section className="mx-auto w-full max-w-lg">
-          <div className="card-surface rounded-[28px] p-6 sm:p-8">
+          <MotionDiv className="card-surface rounded-[32px] p-6 sm:p-8" delay={0.08}>
             <div className="mb-8 lg:hidden">
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-brand">{eyebrow}</p>
-              <h1 className="mt-3 text-3xl font-black text-white">{title}</h1>
+              <h1 className="hero-title mt-3 text-3xl font-black">{title}</h1>
               <p className="mt-3 text-sm leading-6 text-slate-400">{description}</p>
             </div>
             {children}
             {footer ? <div className="mt-6 border-t border-white/10 pt-5 text-sm text-slate-400">{footer}</div> : null}
-          </div>
+          </MotionDiv>
         </section>
       </div>
-    </main>
+    </MotionMain>
   );
 }

@@ -1,5 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  outputFileTracingRoot: process.cwd(),
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "12mb"
+    }
+  },
   images: {
     remotePatterns: [
       {
@@ -13,6 +19,18 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "picsum.photos"
+      },
+      {
+        protocol: "https",
+        hostname: "image.pollinations.ai"
+      },
+      {
+        protocol: "https",
+        hostname: "*.googleusercontent.com"
+      },
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com"
       }
     ]
   }

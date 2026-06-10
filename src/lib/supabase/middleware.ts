@@ -1,58 +1,29 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { getSupabaseAnonKey, getSupabaseUrl, hasSupabaseEnv } from "@/lib/env";
+import { hasSupabaseEnv } from "@/lib/env";
 
-const authPages = new Set(["/login", "/signup", "/forgot-password"]);
+function hasSupabaseSessionCookie(request: NextRequest) {
+  return request.cookies.getAll().some((cookie) => cookie.name.startsWith("sb-"));
+}
 
 export async function updateSession(request: NextRequest) {
-  const fallbackResponse = NextResponse.next({ request });
-  if (!hasSupabaseEnv) return fallbackResponse;
+  const response = NextResponse.next({ request });
+  if (!hasSupabaseEnv) return response;
 
-  let response = NextResponse.next({ request });
+  const { pathname, search } = request.nextUrl;
+  const isDashboardRoute = pathname.startsWith("/dashboard");
+  const isAdminRoute = pathname.startsWith("/admin");
+  const hasSessionCookie = hasSupabaseSessionCookie(request);
 
-  try {
-    const supabase = createServerClient(
-      getSupabaseUrl(),
-      getSupabaseAnonKey(),
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll();
-          },
-          setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-            cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-            response = NextResponse.next({ request });
-            cookiesToSet.forEach(({ name, value, options }) =>
-              response.cookies.set(name, value, options)
-            );
-          }
-        }
-      }
-    );
-
-    const {
-      data: { user }
-    } = await supabase.auth.getUser();
-
-    const { pathname, search } = request.nextUrl;
-
-    if (!user && pathname.startsWith("/dashboard")) {
-      const loginUrl = request.nextUrl.clone();
-      loginUrl.pathname = "/login";
-      loginUrl.search = "";
-      loginUrl.searchParams.set("next", `${pathname}${search}`);
-      return NextResponse.redirect(loginUrl);
-    }
-
-    if (user && authPages.has(pathname)) {
-      const dashboardUrl = request.nextUrl.clone();
-      dashboardUrl.pathname = "/dashboard";
-      dashboardUrl.search = "";
-      return NextResponse.redirect(dashboardUrl);
-    }
-
-    return response;
-  } catch {
-    return fallbackResponse;
+  // Never run remote auth checks in middleware. Vercel edge middleware has a
+  // tight timeout, and Server Components/Actions already validate auth before
+  // reading or mutating protected data.
+  if ((isDashboardRoute || isAdminRoute) && !hasSessionCookie) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    loginUrl.search = "";
+    loginUrl.searchParams.set("next", `${pathname}${search}`);
+    return NextResponse.redirect(loginUrl);
   }
+
+  return response;
 }

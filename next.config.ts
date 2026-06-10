@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  outputFileTracingRoot: process.cwd(),
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "12mb"
+    }
+  },
   images: {
     remotePatterns: [
       {
@@ -10,6 +16,10 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "*.supabase.co"
+      },
+      {
+        protocol: "https",
+        hostname: "image.pollinations.ai"
       }
     ]
   }

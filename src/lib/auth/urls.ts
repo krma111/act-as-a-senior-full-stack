@@ -14,7 +14,8 @@ export function getBaseUrl() {
 
 // Add both of these callback URLs in Supabase Auth settings and provider dashboards:
 // Development: http://localhost:3000/auth/callback
-// Production:  https://your-domain.com/auth/callback
+// Production:  https://promptvault-ai-rho.vercel.app/auth/callback
+// Custom domain, if connected: https://your-domain.com/auth/callback
 export function getAuthCallbackUrl(nextPath = "/dashboard") {
   const next = nextPath.startsWith("/") ? nextPath : "/dashboard";
   const callbackUrl = `${getBaseUrl()}/auth/callback`;
@@ -22,5 +23,5 @@ export function getAuthCallbackUrl(nextPath = "/dashboard") {
 }
 
 export function getPasswordResetRedirectUrl() {
-  return getAuthCallbackUrl("/reset-password");
+  return `${getBaseUrl()}/reset-password`;
 }

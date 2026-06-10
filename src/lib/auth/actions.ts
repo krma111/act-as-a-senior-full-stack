@@ -61,22 +61,8 @@ export async function updateOwnProfile(formData: FormData) {
     })
     .eq("id", user.id);
 
-  let legacyError: { message: string } | null = null;
-
-  if (profileError) {
-    const legacyResult = await supabase
-      .from("users")
-      .update({
-        display_name: fullName || null,
-        avatar_url: avatarUrl || null
-      })
-      .eq("id", user.id);
-
-    legacyError = legacyResult.error ? { message: legacyResult.error.message } : null;
-  }
-
-  if (metadataUpdate.error && profileError && legacyError) {
-    redirectWithMessage("/dashboard", "error", metadataUpdate.error.message);
+  if (metadataUpdate.error || profileError) {
+    redirectWithMessage("/dashboard", "error", metadataUpdate.error?.message ?? profileError?.message ?? "Unable to update profile.");
   }
 
   revalidatePath("/", "layout");

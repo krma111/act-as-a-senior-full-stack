@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { motion } from "framer-motion";
 import { Search } from "lucide-react";
 import type { Category } from "@/lib/types";
 
@@ -12,43 +13,48 @@ export function SearchFilters({
   categories,
   activeCategory,
   activeAspectRatio,
-  search
+  search,
+  basePath = "/"
 }: {
   categories: Category[];
   activeCategory?: string;
   activeAspectRatio?: string;
   search?: string;
+  basePath?: string;
 }) {
   const router = useRouter();
   const [value, setValue] = useState(search ?? "");
 
-  const q = search ? `&q=${encodeURIComponent(search)}` : "";
-  const categoryQ = activeCategory ? `&category=${encodeURIComponent(activeCategory)}` : "";
-  const ratioQ = activeAspectRatio ? `&ratio=${encodeURIComponent(activeAspectRatio)}` : "";
-
-  function buildUrl(nextQ?: string) {
+  function buildUrl(next?: { q?: string; category?: string; ratio?: string }) {
     const params = new URLSearchParams();
-    if (nextQ?.trim()) params.set("q", nextQ.trim());
-    if (activeCategory) params.set("category", activeCategory);
-    if (activeAspectRatio) params.set("ratio", activeAspectRatio);
+    const nextQ = next?.q ?? search ?? "";
+    const nextCategory = next?.category ?? activeCategory;
+    const nextRatio = next?.ratio ?? activeAspectRatio;
+    if (nextQ.trim()) params.set("q", nextQ.trim());
+    if (nextCategory) params.set("category", nextCategory);
+    if (nextRatio) params.set("ratio", nextRatio);
     const query = params.toString();
-    return query ? `/?${query}` : "/";
+    return query ? `${basePath}?${query}` : basePath;
   }
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    router.push(buildUrl(value));
+    router.push(buildUrl({ q: value }));
   }
 
   function onChange(next: string) {
     setValue(next);
-    if (!next.trim()) {
-      router.push(buildUrl(""));
-    }
+    if (!next.trim()) router.push(buildUrl({ q: "" }));
   }
 
   return (
-    <form className="mx-auto mt-8 max-w-3xl" onSubmit={onSubmit}>
+    <motion.form
+      className="mx-auto mt-8 max-w-3xl"
+      onSubmit={onSubmit}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.38, delay: 0.08 }}
+    >
       <div className="search-shell relative overflow-hidden rounded-2xl border border-brand/20 bg-white/[0.03] p-1 shadow-glow">
         <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
         <input
@@ -60,31 +66,37 @@ export function SearchFilters({
         />
       </div>
       <div className="mt-4 flex flex-wrap justify-center gap-2">
-        <Link className={`btn-ghost ${!activeCategory ? "border-brand/60 text-brand" : ""}`} href={`/?${ratioQ ? ratioQ.slice(1) : ""}${search ? `${ratioQ ? "&" : ""}q=${encodeURIComponent(search)}` : ""}`}>
-          All
-        </Link>
-        {categories.map((category) => (
-          <Link
-            key={category.id}
-            className={`btn-ghost ${activeCategory === category.slug ? "border-brand/60 text-brand" : ""}`}
-            href={`/?category=${category.slug}${q}${ratioQ}`}
-          >
-            {category.name}
+        <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.96 }}>
+          <Link className={`btn-ghost ${!activeCategory ? "border-brand/60 text-brand" : ""}`} href={buildUrl({ category: "" })}>
+            All
           </Link>
+        </motion.div>
+        {categories.map((category) => (
+          <motion.div key={category.id} whileHover={{ y: -2 }} whileTap={{ scale: 0.96 }}>
+            <Link
+              className={`btn-ghost ${activeCategory === category.slug ? "border-brand/60 text-brand" : ""}`}
+              href={buildUrl({ category: category.slug })}
+            >
+              {category.name}
+            </Link>
+          </motion.div>
         ))}
       </div>
       <div className="mt-3 flex flex-wrap justify-center gap-2">
-        <Link className={`btn-ghost ${!activeAspectRatio ? "border-brand/60 text-brand" : ""}`} href={`/?${search ? `q=${encodeURIComponent(search)}` : ""}${categoryQ}`}>All Ratios</Link>
+        <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.96 }}>
+          <Link className={`btn-ghost ${!activeAspectRatio ? "border-brand/60 text-brand" : ""}`} href={buildUrl({ ratio: "" })}>All Ratios</Link>
+        </motion.div>
         {aspectRatios.map((ratio) => (
-          <Link
-            key={ratio}
-            className={`btn-ghost ${activeAspectRatio === ratio ? "border-brand/60 text-brand" : ""}`}
-            href={`/?ratio=${encodeURIComponent(ratio)}${q}${categoryQ}`}
-          >
-            {ratio}
-          </Link>
+          <motion.div key={ratio} whileHover={{ y: -2 }} whileTap={{ scale: 0.96 }}>
+            <Link
+              className={`btn-ghost ${activeAspectRatio === ratio ? "border-brand/60 text-brand" : ""}`}
+              href={buildUrl({ ratio })}
+            >
+              {ratio}
+            </Link>
+          </motion.div>
         ))}
       </div>
-    </form>
+    </motion.form>
   );
 }

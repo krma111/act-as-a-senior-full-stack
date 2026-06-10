@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { SafeImage } from "@/components/safe-image";
 import { redirect } from "next/navigation";
 import { CheckCircle2, ExternalLink, Mail, Sparkles, UserRound } from "lucide-react";
-import { updateOwnProfile } from "@/lib/auth/actions";
+import { MotionMain, MotionSection } from "@/components/motion-primitives";
+import { logout, updateOwnProfile } from "@/lib/auth/actions";
 import { getAuthSessionState, getSavedPromptsForDashboard } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
@@ -36,17 +38,34 @@ export default async function DashboardPage({
     redirect("/login");
   }
 
+  if (profile.status === "banned") {
+    return (
+      <MotionMain className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+        <MotionSection className="card-surface rounded-[32px] p-8 text-center">
+          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-red-200">Account blocked</p>
+          <h1 className="mt-3 text-3xl font-black text-white">Your account is currently banned.</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-400">
+            Creator and dashboard actions are disabled for this account. {profile.ban_reason ? `Reason: ${profile.ban_reason}` : "Contact support if you believe this is a mistake."}
+          </p>
+          <form action={logout} className="mt-6">
+            <button className="btn-primary">Log out</button>
+          </form>
+        </MotionSection>
+      </MotionMain>
+    );
+  }
+
   const savedPrompts = await getSavedPromptsForDashboard(supabase, user.id);
   const displayName = profile.full_name ?? profile.display_name ?? user.email?.split("@")[0] ?? "PromptVault user";
   const avatarUrl = profile.avatar_url ?? (typeof user.user_metadata?.avatar_url === "string" ? user.user_metadata.avatar_url : null);
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      <section className="card-surface rounded-[28px] p-6 sm:p-8">
+    <MotionMain className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <MotionSection className="card-surface rounded-[32px] p-6 sm:p-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex items-start gap-4">
             {avatarUrl ? (
-              <img src={avatarUrl} alt={displayName} className="h-16 w-16 rounded-2xl border border-white/10 object-cover" />
+              <SafeImage src={avatarUrl} alt={displayName} width={64} height={64} className="h-16 w-16 rounded-2xl border border-white/10 object-cover" />
             ) : (
               <div className="grid h-16 w-16 place-items-center rounded-2xl border border-brand/30 bg-brand/10 text-lg font-bold text-brand">
                 {getInitials(displayName)}
@@ -74,10 +93,12 @@ export default async function DashboardPage({
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Link href="/prompts/new" className="btn-primary">
+            <Link href="/dashboard/upload" className="btn-primary">
               <Sparkles className="h-4 w-4" />
-              Create prompt
+              Upload prompt
             </Link>
+            <Link href="/dashboard/packs/new" className="btn-ghost">Create pack</Link>
+            <Link href="/dashboard/my-prompts" className="btn-ghost">My prompts</Link>
             <Link href="/" className="btn-ghost">Explore vault</Link>
           </div>
         </div>
@@ -102,10 +123,10 @@ export default async function DashboardPage({
             <p className="mt-3 text-xl font-bold text-white">{user.email_confirmed_at ? "Active" : "Verify email"}</p>
           </div>
         </div>
-      </section>
+      </MotionSection>
 
-      <section className="mt-8 grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
-        <div className="card-surface rounded-[28px] p-6">
+      <MotionSection className="mt-8 grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="card-surface rounded-[32px] p-6">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.22em] text-brand">Profile</p>
             <h2 className="mt-2 text-2xl font-bold text-white">Update your account</h2>
@@ -125,7 +146,7 @@ export default async function DashboardPage({
           </form>
         </div>
 
-        <div className="card-surface rounded-[28px] p-6">
+        <div className="card-surface rounded-[32px] p-6">
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-brand">Your vault</p>
@@ -139,16 +160,16 @@ export default async function DashboardPage({
               <p className="text-lg font-semibold text-white">No data yet. Start creating your first prompt.</p>
               <p className="mt-2 text-sm text-slate-400">Your saved prompts will appear here after you start using the vault.</p>
               <div className="mt-5 flex flex-wrap justify-center gap-3">
-                <Link href="/prompts/new" className="btn-primary">Create prompt</Link>
+                <Link href="/dashboard/upload" className="btn-primary">Create prompt</Link>
                 <Link href="/" className="btn-ghost">Explore prompts</Link>
               </div>
             </div>
           ) : (
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               {savedPrompts.map((prompt) => (
-                <Link key={prompt.id} href={prompt.href} className="group card-surface overflow-hidden rounded-[24px]">
+                <Link key={prompt.id} href={prompt.href} className="group card-surface overflow-hidden rounded-[24px] transition duration-500 hover:-translate-y-1 hover:border-brand/40">
                   <div className="aspect-[4/3] overflow-hidden bg-black/30">
-                    <img src={prompt.image_url} alt={prompt.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
+                    <SafeImage src={prompt.image_url} alt={prompt.title} width={640} height={480} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
                   </div>
                   <div className="space-y-3 p-4">
                     <div className="flex items-start justify-between gap-3">
@@ -173,7 +194,7 @@ export default async function DashboardPage({
             </div>
           )}
         </div>
-      </section>
-    </main>
+      </MotionSection>
+    </MotionMain>
   );
 }

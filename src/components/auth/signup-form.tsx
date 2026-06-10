@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { getClientAuthErrorMessage } from "@/lib/auth/client-errors";
 import { getAuthErrorMessage } from "@/lib/auth/errors";
 import { getAuthCallbackUrl } from "@/lib/auth/urls";
 import { getEmailValidationError, getPasswordValidationError, normalizeEmail } from "@/lib/auth/validation";
@@ -79,6 +80,16 @@ export function SignupForm({
       }
 
       if (data.session) {
+        try {
+          await fetch("/api/auth/welcome", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${data.session.access_token}`
+            }
+          });
+        } catch (error) {
+          console.error("Welcome email request failed", error);
+        }
         toast.success("Account created.");
         router.push("/dashboard");
         router.refresh();
@@ -89,7 +100,7 @@ export function SignupForm({
       router.push("/login?message=Check%20your%20email%20to%20verify%20your%20account.");
       router.refresh();
     } catch (error) {
-      const message = getAuthErrorMessage(error instanceof Error ? error.message : "Unable to create account.");
+      const message = getClientAuthErrorMessage(error, "Unable to create account.");
       setFormError(message);
       toast.error(message);
     } finally {
@@ -116,8 +127,7 @@ export function SignupForm({
         </div>
       ) : null}
 
-      <OAuthButtons disabled={!authEnabled || isLoading} />
-
+      <OAuthButtons authEnabled={authEnabled} disabled={isLoading} />
       <div className="relative flex items-center justify-center py-1 text-xs uppercase tracking-[0.24em] text-slate-500">
         <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-white/10" />
         <span className="relative bg-[#091015] px-3">or continue with email</span>

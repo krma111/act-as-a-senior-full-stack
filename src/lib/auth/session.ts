@@ -12,6 +12,14 @@ type LooseProfileRow = {
   display_name?: string | null;
   avatar_url?: string | null;
   role?: string | null;
+  status?: string | null;
+  banned_at?: string | null;
+  banned_by?: string | null;
+  ban_reason?: string | null;
+  manual_badge_override?: boolean | null;
+  manual_badge_type?: string | null;
+  manual_badge_assigned_by?: string | null;
+  manual_badge_assigned_at?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 };
@@ -61,6 +69,20 @@ function normalizeProfile(user: User, row?: LooseProfileRow | null): Profile {
       (typeof user.user_metadata?.avatar_url === "string" ? user.user_metadata.avatar_url : null) ??
       null,
     role: normalizeRole(row?.role),
+    status: row?.status === "banned" ? "banned" : "active",
+    banned_at: row?.banned_at ?? null,
+    banned_by: row?.banned_by ?? null,
+    ban_reason: row?.ban_reason ?? null,
+    manual_badge_override: Boolean(row?.manual_badge_override),
+    manual_badge_type:
+      row?.manual_badge_type === "bronze" ||
+      row?.manual_badge_type === "silver" ||
+      row?.manual_badge_type === "gold" ||
+      row?.manual_badge_type === "diamond"
+        ? row.manual_badge_type
+        : "none",
+    manual_badge_assigned_by: row?.manual_badge_assigned_by ?? null,
+    manual_badge_assigned_at: row?.manual_badge_assigned_at ?? null,
     created_at: row?.created_at ?? user.created_at ?? new Date().toISOString(),
     updated_at: row?.updated_at ?? row?.created_at ?? user.updated_at ?? user.created_at ?? new Date().toISOString()
   };
@@ -73,8 +95,13 @@ async function readProfileFromTable(supabase: SupabaseServerClient, table: "prof
 }
 
 export async function getProfileForUser(supabase: SupabaseServerClient, user: User) {
-  const current = (await readProfileFromTable(supabase, "profiles", user.id)) ?? (await readProfileFromTable(supabase, "users", user.id));
-  return normalizeProfile(user, current);
+  try {
+    const current = (await readProfileFromTable(supabase, "profiles", user.id)) ?? (await readProfileFromTable(supabase, "users", user.id));
+    return normalizeProfile(user, current);
+  } catch (error) {
+    console.error("[auth-session] Profile lookup failed; using auth metadata fallback", error);
+    return normalizeProfile(user, null);
+  }
 }
 
 export async function getAuthSessionState(): Promise<AuthSessionState> {
@@ -83,16 +110,29 @@ export async function getAuthSessionState(): Promise<AuthSessionState> {
   }
 
   const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
+  let user: User | null = null;
+
+  try {
+    const result = await supabase.auth.getUser();
+    if (result.error) {
+      return { supabase, user: null, profile: null };
+    }
+    user = result.data.user;
+  } catch {
+    return { supabase, user: null, profile: null };
+  }
 
   if (!user) {
     return { supabase, user: null, profile: null };
   }
 
-  const profile = await getProfileForUser(supabase, user);
-  return { supabase, user, profile };
+  try {
+    const profile = await getProfileForUser(supabase, user);
+    return { supabase, user, profile };
+  } catch (error) {
+    console.error("[auth-session] Session profile normalization failed", error);
+    return { supabase, user, profile: normalizeProfile(user, null) };
+  }
 }
 
 async function getSavedPromptsFromNewSchema(supabase: SupabaseServerClient, userId: string): Promise<DashboardSavedPrompt[] | null> {
@@ -159,5 +199,10 @@ async function getSavedPromptsFromLegacySchema(supabase: SupabaseServerClient, u
 }
 
 export async function getSavedPromptsForDashboard(supabase: SupabaseServerClient, userId: string) {
-  return (await getSavedPromptsFromNewSchema(supabase, userId)) ?? (await getSavedPromptsFromLegacySchema(supabase, userId));
+  try {
+    return (await getSavedPromptsFromNewSchema(supabase, userId)) ?? (await getSavedPromptsFromLegacySchema(supabase, userId));
+  } catch (error) {
+    console.error("[auth-session] Saved prompts lookup failed", error);
+    return [];
+  }
 }
