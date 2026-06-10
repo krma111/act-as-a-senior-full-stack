@@ -62,7 +62,7 @@ async function logEmailEvent(input: SendEmailInput, status: EmailStatus, error?:
 }
 
 async function hasSentEmailEvent(eventType: string, recipientUserId?: string | null, recipientEmail?: string | null) {
-  if (!hasSupabaseServiceRoleKey) return false;
+  if (!hasSupabaseServiceRoleKey()) return false;
 
   try {
     const supabase = createAdminClient();

@@ -1,11 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "@/backend/database/types";
 import { getSupabaseServiceRoleKey, getSupabaseUrl } from "@/backend/env";
 
-let cached: ReturnType<typeof createClient> | null = null;
+type AdminClient = ReturnType<typeof createClient<Database>>;
 
-export function createAdminClient() {
+let cached: AdminClient | null = null;
+
+export function createAdminClient(): AdminClient {
   if (cached) return cached;
-  cached = createClient(getSupabaseUrl(), getSupabaseServiceRoleKey(), {
+  cached = createClient<Database>(getSupabaseUrl(), getSupabaseServiceRoleKey(), {
     auth: { autoRefreshToken: false, persistSession: false }
   });
   return cached;
