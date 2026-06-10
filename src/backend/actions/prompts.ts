@@ -161,8 +161,18 @@ export async function createPrompt(formData: FormData) {
 
 export async function deleteOwnPrompt(formData: FormData) {
   const supabase = await createClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
   const id = asString(formData, "id");
-  await supabase.from("prompts").delete().eq("id", id);
+  const { error } = await supabase.from("prompts").delete().eq("id", id).eq("user_id", user.id);
+
+  if (error) {
+    redirectWithMessage("/dashboard", error.message);
+  }
+
   revalidatePath("/");
   redirect("/dashboard");
 }
@@ -178,7 +188,7 @@ export async function updatePrompt(formData: FormData) {
   const validationError = validatePromptPayload(formData);
   if (validationError) redirectWithMessage(`/prompts/${id}/edit`, validationError);
 
-  const { data: viewer } = await supabase.from("users").select("role").eq("id", user.id).single();
+  const { data: viewer } = await supabase.from("profiles").select("role").eq("id", user.id).single();
   const query = supabase
     .from("prompts")
     .update({
@@ -265,6 +275,18 @@ export async function reportPrompt(formData: FormData) {
   if (!user) redirect("/login");
 
   const promptId = asString(formData, "prompt_id");
+
+  const { data: existing } = await supabase
+    .from("reports")
+    .select("id")
+    .eq("prompt_id", promptId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (existing) {
+    redirect(`/prompts/${promptId}?message=${encodeURIComponent("You already reported this prompt.")}`);
+  }
+
   const { error } = await supabase.from("reports").insert({
     prompt_id: promptId,
     user_id: user.id,

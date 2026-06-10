@@ -23,9 +23,7 @@ export function requiredEnv(name: string) {
 
 export const supabaseUrl = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
 export const supabaseAnonKey = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-export const supabaseServiceRoleKey = cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY);
 export const hasSupabaseEnv = isUsableUrl(supabaseUrl) && isUsableSupabaseKey(supabaseAnonKey);
-export const hasSupabaseServiceRoleKey = isUsableSupabaseKey(supabaseServiceRoleKey);
 // Public read-only pages return empty states when Supabase is not configured.
 // Authentication routes must not use preview auth or fake user data.
 export const isPreviewMode = !hasSupabaseEnv;
@@ -34,8 +32,22 @@ const vercelUrl = cleanEnv(process.env.VERCEL_PROJECT_PRODUCTION_URL || process.
 export const siteUrl = cleanEnv(process.env.NEXT_PUBLIC_SITE_URL) || (vercelUrl ? `https://${vercelUrl}` : "http://localhost:3000");
 export const adminEmail = cleanEnv(process.env.NEXT_PUBLIC_ADMIN_EMAIL).toLowerCase();
 export const isGithubOAuthEnabled = cleanEnv(process.env.NEXT_PUBLIC_ENABLE_GITHUB_OAUTH).toLowerCase() === "true";
-export const resendApiKey = cleanEnv(process.env.RESEND_API_KEY);
-export const hasEmailProviderEnv = isUsableSupabaseKey(resendApiKey);
+
+function getRawSupabaseServiceRoleKey() {
+  return cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
+function getRawResendApiKey() {
+  return cleanEnv(process.env.RESEND_API_KEY);
+}
+
+export function hasSupabaseServiceRoleKey() {
+  return isUsableSupabaseKey(getRawSupabaseServiceRoleKey());
+}
+
+export function hasEmailProviderEnv() {
+  return isUsableSupabaseKey(getRawResendApiKey());
+}
 
 export function getSupabaseUrl() {
   if (!supabaseUrl) throw new Error("Missing required environment variable: NEXT_PUBLIC_SUPABASE_URL");
@@ -48,6 +60,13 @@ export function getSupabaseAnonKey() {
 }
 
 export function getSupabaseServiceRoleKey() {
-  if (!supabaseServiceRoleKey) throw new Error("Missing required environment variable: SUPABASE_SERVICE_ROLE_KEY");
-  return supabaseServiceRoleKey;
+  const value = getRawSupabaseServiceRoleKey();
+  if (!value) throw new Error("Missing required environment variable: SUPABASE_SERVICE_ROLE_KEY");
+  return value;
+}
+
+export function getResendApiKey() {
+  const value = getRawResendApiKey();
+  if (!value) throw new Error("Missing required environment variable: RESEND_API_KEY");
+  return value;
 }

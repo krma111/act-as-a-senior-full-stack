@@ -1,7 +1,5 @@
 import { redirect } from "next/navigation";
 import { getAuthSessionState } from "@/backend/auth/session";
-import { hasSupabaseServiceRoleKey } from "@/backend/env";
-import { createAdminClient } from "@/backend/database/admin";
 import type { Category, Profile, SiteSettings, TagRecord } from "@/shared/types";
 
 export type AdminPromptStatus = "pending" | "approved" | "rejected";
@@ -136,9 +134,6 @@ type PackRow = {
 };
 type PaymentRow = Omit<AdminPaymentRequest, "user_email" | "pack_name">;
 
-const adminServiceError =
-  "Admin database service is not configured. Add SUPABASE_SERVICE_ROLE_KEY in Vercel Production environment variables.";
-
 const profileSelect =
   "id,email,full_name,display_name,avatar_url,role,status,banned_at,banned_by,ban_reason,manual_badge_override,manual_badge_type,manual_badge_assigned_by,manual_badge_assigned_at,created_at,updated_at";
 const fallbackProfileSelect = "id,email,full_name,display_name,avatar_url,role,created_at,updated_at";
@@ -188,10 +183,6 @@ function normalizePromptStatus(value?: string | null): AdminPromptStatus {
   return "pending";
 }
 
-function emptyPromptCounts(): AdminPromptCounts {
-  return { all: 0, pending: 0, approved: 0, rejected: 0, featured: 0, deleted: 0 };
-}
-
 function emptyAdminStats(): AdminStats {
   return {
     totalPrompts: 0,
@@ -208,37 +199,6 @@ function emptyAdminStats(): AdminStats {
     totalPaymentRequests: 0,
     totalApprovedSales: 0
   };
-}
-
-function countsFromRows(rows: Array<{ status?: string | null; featured?: boolean | null; deleted_at?: string | null }>): AdminPromptCounts {
-  const counts = emptyPromptCounts();
-
-  for (const row of rows) {
-    if (row.deleted_at) {
-      counts.deleted += 1;
-      continue;
-    }
-
-    const status = normalizePromptStatus(row.status);
-    counts[status] += 1;
-    if (status !== "rejected") counts.all += 1;
-    if (row.featured) counts.featured += 1;
-  }
-
-  return counts;
-}
-
-function countsFromRpcRows(rows: Array<{ status?: string | null; count?: number | string | null }>): AdminPromptCounts {
-  const counts = emptyPromptCounts();
-
-  for (const row of rows) {
-    const status = normalizePromptStatus(row.status ?? "pending");
-    const count = Number(row.count) || 0;
-    counts[status] += count;
-    if (status !== "rejected") counts.all += count;
-  }
-
-  return counts;
 }
 
 function normalizeRole(value: string): AdminRole {
@@ -291,10 +251,10 @@ export async function requireAdmin(nextPath = "/admin") {
   }
 
   return {
-    supabase: hasSupabaseServiceRoleKey ? createAdminClient() : supabase,
+    supabase,
     user,
     profile,
-    adminDatabaseError: hasSupabaseServiceRoleKey ? null : adminServiceError
+    adminDatabaseError: null
   } satisfies AdminContext;
 }
 
@@ -386,51 +346,26 @@ export async function getAdminSiteSettings() {
 }
 
 export async function getAdminPrompts(status?: string, userId?: string) {
-  const { supabase, adminDatabaseError } = await requireAdmin("/admin/prompts");
+  const { supabase } = await requireAdmin("/admin/prompts");
   const activeStatus = sanitizePromptFilter(status);
 
-  if (adminDatabaseError) {
-    const [countResult, promptResult] = await Promise.all([
-      supabase.rpc("admin_prompt_counts"),
-      supabase.rpc("admin_list_prompts", { filter_status: activeStatus === "all" ? null : activeStatus })
-    ]);
-    const counts = countsFromRpcRows((countResult.data ?? []) as Array<{ status?: string | null; count?: number | string | null }>);
-
-    if (countResult.error || promptResult.error) {
-      return {
-        prompts: [] as AdminPrompt[],
-        error: countResult.error?.message ?? promptResult.error?.message ?? "Admin prompt query failed.",
-        activeStatus,
-        counts,
-        diagnostics: {
-          renderedCount: 0,
-          pendingCount: counts.pending,
-          usingServiceRole: false,
-          serviceWarning: "Admin session query failed. Check Supabase admin RPC migration."
-        }
-      };
-    }
-
-    const prompts = ((promptResult.data ?? []) as PromptRow[])
-      .filter((prompt) => !userId || prompt.user_id === userId)
-      .map((prompt) => normalizePrompt(prompt));
-
-    return {
-      prompts,
-      error: null,
-      activeStatus,
-      counts,
-      diagnostics: {
-        renderedCount: prompts.length,
-        pendingCount: counts.pending,
-        usingServiceRole: false,
-        serviceWarning: null
-      }
-    };
-  }
-
-  const { data: countRows } = await supabase.from("prompts").select("status,featured,deleted_at");
-  const counts = countsFromRows((countRows ?? []) as Array<{ status?: string | null; featured?: boolean | null; deleted_at?: string | null }>);
+  const countQueries = [
+    supabase.from("prompts").select("id", { count: "exact", head: true }).is("deleted_at", null),
+    supabase.from("prompts").select("id", { count: "exact", head: true }).eq("status", "pending").is("deleted_at", null),
+    supabase.from("prompts").select("id", { count: "exact", head: true }).eq("status", "approved").is("deleted_at", null),
+    supabase.from("prompts").select("id", { count: "exact", head: true }).eq("status", "rejected").is("deleted_at", null),
+    supabase.from("prompts").select("id", { count: "exact", head: true }).eq("featured", true).is("deleted_at", null),
+    supabase.from("prompts").select("id", { count: "exact", head: true }).not("deleted_at", "is", null),
+  ];
+  const [allC, pendingC, approvedC, rejectedC, featuredC, deletedC] = await Promise.all(countQueries);
+  const counts: AdminPromptCounts = {
+    all: allC.count ?? 0,
+    pending: pendingC.count ?? 0,
+    approved: approvedC.count ?? 0,
+    rejected: rejectedC.count ?? 0,
+    featured: featuredC.count ?? 0,
+    deleted: deletedC.count ?? 0,
+  };
 
   let query = supabase.from("prompts").select(promptSelect).order("created_at", { ascending: false });
 

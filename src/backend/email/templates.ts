@@ -26,8 +26,13 @@ function shell(content: string) {
   `;
 }
 
+function isValidEmailUrl(url: string) {
+  return url.startsWith("http://") || url.startsWith("https://");
+}
+
 function button(label: string, href: string) {
-  return `<a href="${escapeHtml(href)}" style="display:inline-block;margin-top:18px;border-radius:999px;background:#28ff14;color:#021006;padding:12px 18px;text-decoration:none;font-weight:800">${escapeHtml(label)}</a>`;
+  const safeHref = isValidEmailUrl(href) ? href : "";
+  return `<a href="${escapeHtml(safeHref)}" style="display:inline-block;margin-top:18px;border-radius:999px;background:#28ff14;color:#021006;padding:12px 18px;text-decoration:none;font-weight:800">${escapeHtml(label)}</a>`;
 }
 
 export function welcomeEmailTemplate({ name }: TemplateInput) {

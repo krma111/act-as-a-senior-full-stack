@@ -246,7 +246,6 @@ export async function createAdminPrompt(formData: FormData) {
   if (validationError) redirectWithMessage(errorPath, "error", validationError);
 
   const status = cleanStatus(asString(formData, "status"));
-  const imageUpload = await uploadAdminPromptImage(supabase, formData, crypto.randomUUID());
 
   const { data, error } = await supabase
     .from("prompts")
@@ -256,7 +255,7 @@ export async function createAdminPrompt(formData: FormData) {
       description: asString(formData, "description") || null,
       prompt_text: asString(formData, "prompt_text"),
       negative_prompt: asString(formData, "negative_prompt") || null,
-      image_url: imageUpload?.url ?? (asString(formData, "image_url") || null),
+      image_url: asString(formData, "image_url") || null,
       creator_name: asString(formData, "creator_name") || null,
       category: asString(formData, "category").toLowerCase(),
       tags: tagsFrom(asString(formData, "tags")),
@@ -275,6 +274,12 @@ export async function createAdminPrompt(formData: FormData) {
     .single();
 
   if (error) redirectWithMessage(errorPath, "error", error.message);
+
+  const imageUpload = await uploadAdminPromptImage(supabase, formData, data.id);
+  if (imageUpload?.url) {
+    await supabase.from("prompts").update({ image_url: imageUpload.url }).eq("id", data.id);
+  }
+
   await logAdminAction(supabase, user.id, "prompt_created", "prompts", data.id, null, { title: asString(formData, "title"), status });
   revalidatePath("/");
   revalidatePath("/admin/prompts");
@@ -286,10 +291,19 @@ export async function approvePrompt(formData: FormData) {
   const id = asString(formData, "id");
   if (!isValidUuid(id)) redirectWithMessage("/admin/prompts", "error", "Prompt not found.");
 
+  const { data: current } = await supabase.from("prompts").select("status,deleted_at").eq("id", id).maybeSingle();
+  if (!current) redirectWithMessage("/admin/prompts", "error", "Prompt not found.");
+  if (current.status === "approved" && !current.deleted_at) {
+    redirectWithMessage("/admin/prompts", "message", "Prompt is already approved.");
+  }
+  if (current.deleted_at) {
+    redirectWithMessage("/admin/prompts", "error", "Cannot approve a soft-deleted prompt. Restore it first.");
+  }
+
   const oldValue = await readPromptSnapshot(supabase, id);
   const { error } = await supabase
     .from("prompts")
-    .update({ status: "approved", rejection_reason: null, deleted_at: null, deleted_by: null, updated_at: new Date().toISOString() })
+    .update({ status: "approved", rejection_reason: null, updated_at: new Date().toISOString() })
     .eq("id", id);
 
   if (error) redirectWithMessage("/admin/prompts", "error", error.message);

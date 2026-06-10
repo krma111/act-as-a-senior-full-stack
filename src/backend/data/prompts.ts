@@ -248,15 +248,17 @@ export async function getPrompts(options?: {
     if (options?.aspectRatio) query = query.eq("aspect_ratio", options.aspectRatio);
     if (options?.featured) query = query.eq("featured", true);
     if (search) {
-      const tag = search.toLowerCase().replace(/[{}"',]/g, "");
       const orParts = [
         `title.ilike.%${search}%`,
         `prompt_text.ilike.%${search}%`,
         `ai_model.ilike.%${search}%`,
         `category.ilike.%${search}%`
       ];
-      if (tag && !/\s/.test(tag)) orParts.push(`tags.ov.{${tag}}`);
       query = query.or(orParts.join(","));
+      const tag = search.toLowerCase().replace(/[^a-z0-9- ]/g, "").trim();
+      if (tag && !/\s/.test(tag)) {
+        query = query.overlaps("tags", [tag]);
+      }
     }
 
     query =

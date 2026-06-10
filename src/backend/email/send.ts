@@ -1,7 +1,7 @@
 import "server-only";
 
 import { Resend } from "resend";
-import { hasEmailProviderEnv, hasSupabaseServiceRoleKey, resendApiKey, siteUrl } from "@/backend/env";
+import { hasEmailProviderEnv, hasSupabaseServiceRoleKey, getResendApiKey, siteUrl } from "@/backend/env";
 import {
   approvalEmailTemplate,
   followerApprovedPromptEmailTemplate,
@@ -11,7 +11,7 @@ import {
 } from "@/backend/email/templates";
 import { createAdminClient } from "@/backend/database/admin";
 
-const emailFrom = 'PromptVault <onboarding@resend.dev>';
+const emailFrom = (process.env.EMAIL_FROM?.trim() ?? "") || 'PromptVault <noreply@promptvault.com>';
 const maxAttempts = 3;
 
 type EmailStatus = "sent" | "failed" | "skipped";
@@ -32,8 +32,8 @@ function recipientsFrom(value: string | string[]) {
 }
 
 function getResendClient() {
-  if (!hasEmailProviderEnv) return null;
-  return new Resend(resendApiKey);
+  if (!hasEmailProviderEnv()) return null;
+  return new Resend(getResendApiKey());
 }
 
 function wait(ms: number) {
@@ -41,7 +41,7 @@ function wait(ms: number) {
 }
 
 async function logEmailEvent(input: SendEmailInput, status: EmailStatus, error?: string | null) {
-  if (!hasSupabaseServiceRoleKey) return;
+  if (!hasSupabaseServiceRoleKey()) return;
 
   try {
     const supabase = createAdminClient();
@@ -89,20 +89,25 @@ async function sendEmailWithRetry(client: Resend, input: SendEmailInput) {
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      const { error } = await client.emails.send(
-        {
-          from: emailFrom,
-          to: recipientsFrom(input.to),
-          subject: input.subject,
-          text: input.text,
-          html: input.html
-        },
-        input.idempotencyKey
-          ? {
-              idempotencyKey: input.idempotencyKey
-            }
-          : undefined
-      );
+      const { error } = await Promise.race([
+        client.emails.send(
+          {
+            from: emailFrom,
+            to: recipientsFrom(input.to),
+            subject: input.subject,
+            text: input.text,
+            html: input.html
+          },
+          input.idempotencyKey
+            ? {
+                idempotencyKey: input.idempotencyKey
+              }
+            : undefined
+        ),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Email send timed out")), 10000)
+        )
+      ]);
 
       if (!error) return null;
       lastError = error.message;
