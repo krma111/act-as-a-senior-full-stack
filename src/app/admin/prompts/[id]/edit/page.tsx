@@ -128,7 +128,7 @@ export default async function AdminEditPromptPage({
           </label>
           <label className="block space-y-2">
             <span className="label">Visibility</span>
-            <select className="field" name="visibility" defaultValue={prompt.visibility}>
+            <select className="field" name="visibility" defaultValue={prompt.visibility ?? "public"}>
               <option value="public">public</option>
               <option value="private">private</option>
             </select>
@@ -173,7 +173,7 @@ export default async function AdminEditPromptPage({
             <span>Feature this prompt on public discovery pages.</span>
           </label>
           <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-300">
-            <input name="hidden" type="checkbox" className="mt-1 h-4 w-4 accent-brand" defaultChecked={prompt.hidden} />
+            <input name="hidden" type="checkbox" className="mt-1 h-4 w-4 accent-brand" defaultChecked={prompt.hidden ?? false} />
             <span>Hide from public browse pages.</span>
           </label>
         </div>

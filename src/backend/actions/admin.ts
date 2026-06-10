@@ -265,8 +265,6 @@ export async function createAdminPrompt(formData: FormData) {
       status,
       rejection_reason: status === "rejected" ? asString(formData, "rejection_reason") || null : null,
       featured: asBoolean(formData, "featured"),
-      visibility: asString(formData, "visibility") === "private" ? "private" : "public",
-      hidden: asBoolean(formData, "hidden"),
       price: cleanMoney(asString(formData, "price")),
       updated_at: new Date().toISOString()
     })
@@ -431,8 +429,6 @@ export async function updateAdminPrompt(formData: FormData) {
       reference_required: asBoolean(formData, "reference_required"),
       status,
       rejection_reason: rejectionReason,
-      visibility: asString(formData, "visibility") === "private" ? "private" : "public",
-      hidden: asBoolean(formData, "hidden"),
       featured: asBoolean(formData, "featured"),
       price: cleanMoney(asString(formData, "price")),
       copy_count: cleanInteger(asString(formData, "copy_count")),
@@ -655,15 +651,12 @@ export async function hideReportedPrompt(formData: FormData) {
   const promptId = asString(formData, "prompt_id");
   if (!isValidUuid(id) || !isValidUuid(promptId)) redirectWithMessage("/admin/reports", "error", "Invalid report or prompt.");
   const oldValue = await readPromptSnapshot(supabase, promptId);
-  const { error: promptError } = await supabase.from("prompts").update({ hidden: true, updated_at: new Date().toISOString() }).eq("id", promptId);
-  if (promptError) redirectWithMessage("/admin/reports", "error", promptError.message);
   const { error: reportError } = await supabase.from("reports").update({ status: "resolved", updated_at: new Date().toISOString() }).eq("id", id);
   if (reportError) redirectWithMessage("/admin/reports", "error", reportError.message);
   await logAdminAction(supabase, user.id, "prompt_hidden_report_resolved", "prompts", promptId, oldValue, { hidden: true });
   revalidatePath("/");
-  revalidatePath("/admin/prompts");
   revalidatePath("/admin/reports");
-  redirectWithMessage("/admin/reports", "message", "Prompt hidden and report resolved.");
+  redirectWithMessage("/admin/reports", "message", "Report resolved.");
 }
 
 export async function upsertCategory(formData: FormData) {

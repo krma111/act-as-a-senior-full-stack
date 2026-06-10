@@ -19,8 +19,6 @@ export type Database = {
           status: string;
           rejection_reason: string | null;
           featured: boolean;
-          visibility: string;
-          hidden: boolean;
           price: number;
           copy_count: number;
           like_count: number;

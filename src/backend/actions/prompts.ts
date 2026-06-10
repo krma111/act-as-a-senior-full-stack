@@ -148,7 +148,6 @@ export async function createPrompt(formData: FormData) {
       category_id: asString(formData, "category_id") || null,
       tags: tagsFrom(asString(formData, "tags")),
       ai_model: asString(formData, "ai_model"),
-      visibility: asString(formData, "visibility") === "private" ? "private" : "public",
       status: "pending"
     })
     .select("id")
@@ -198,7 +197,6 @@ export async function updatePrompt(formData: FormData) {
       category_id: asString(formData, "category_id") || null,
       tags: tagsFrom(asString(formData, "tags")),
       ai_model: asString(formData, "ai_model"),
-      visibility: asString(formData, "visibility") === "private" ? "private" : "public",
       updated_at: new Date().toISOString()
     })
     .eq("id", id);
