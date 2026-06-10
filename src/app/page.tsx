@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { SafeImage } from "@/frontend/components/safe-image";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Sparkles, TrendingUp, UploadCloud } from "lucide-react";
@@ -7,12 +8,9 @@ import { SearchFilters } from "@/frontend/components/search-filters";
 import { getCategories, getPrompts, getSiteSettings } from "@/backend/data/prompts";
 import { promptSlug } from "@/shared/constants/slugs";
 
-export default async function Home({
-  searchParams
-}: {
-  searchParams: Promise<{ q?: string; category?: string; ratio?: string }>;
-}) {
-  const params = await searchParams;
+type HomeParams = { q?: string; category?: string; ratio?: string };
+
+async function HomeHero({ params }: { params: HomeParams }) {
   const [settings, categories, featured, trending, latest] = await Promise.all([
     getSiteSettings(),
     getCategories(),
@@ -27,7 +25,7 @@ export default async function Home({
   const sidePrompts = heroPrompts.slice(1, 3);
 
   return (
-    <MotionMain>
+    <>
       <section className="relative overflow-hidden px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
         <div className="hero-grid" />
         <div className="hero-scan" />
@@ -142,42 +140,106 @@ export default async function Home({
         </div>
       </section>
 
-      <MotionSection className="section-shell mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
-        <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-          <div>
-            <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-brand">
-              <CheckCircle2 className="h-4 w-4" /> Editor picks
-            </p>
-            <h2 className="mt-2 text-2xl font-bold">Featured prompts</h2>
-          </div>
-          <p className="max-w-xl text-sm text-slate-400">Hand-picked prompt examples that show what users can recreate fast.</p>
-        </div>
-        <PromptGrid prompts={featured} empty="No featured prompts match this search yet." />
-      </MotionSection>
+      <Suspense fallback={<SectionFallback title="Editor picks" />}>
+        <FeaturedSection params={params} />
+      </Suspense>
 
-      <MotionSection className="section-shell mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
-        <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-          <div>
-            <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-brand">
-              <TrendingUp className="h-4 w-4" /> Community signals
-            </p>
-            <h2 className="mt-2 text-2xl font-bold">Trending prompts</h2>
-          </div>
-          <p className="max-w-xl text-sm text-slate-400">Prompts rising by likes and copies, so users quickly find what is working.</p>
-        </div>
-        <PromptGrid prompts={trending} empty="No trending prompts match this search yet." />
-      </MotionSection>
+      <Suspense fallback={<SectionFallback title="Trending prompts" />}>
+        <TrendingSection params={params} />
+      </Suspense>
 
-      <MotionSection id="latest" className="section-shell mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
-        <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-brand">Fresh uploads</p>
-            <h2 className="mt-2 text-2xl font-bold">Latest prompts</h2>
-          </div>
-          <p className="max-w-xl text-sm text-slate-400">New image-generation ideas from the vault, ready to copy and remix.</p>
+      <Suspense fallback={<SectionFallback title="Latest prompts" />}>
+        <LatestSection params={params} />
+      </Suspense>
+    </>
+  );
+}
+
+async function FeaturedSection({ params }: { params: HomeParams }) {
+  const featured = await getPrompts({ search: params.q, category: params.category, aspectRatio: params.ratio, featured: true, order: "latest", limit: 4 });
+  return (
+    <MotionSection className="section-shell mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
+      <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+        <div>
+          <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-brand">
+            <CheckCircle2 className="h-4 w-4" /> Editor picks
+          </p>
+          <h2 className="mt-2 text-2xl font-bold">Featured prompts</h2>
         </div>
-        <PromptGrid prompts={latest} empty="No prompts yet. Be the first creator to publish one." />
-      </MotionSection>
+        <p className="max-w-xl text-sm text-slate-400">Hand-picked prompt examples that show what users can recreate fast.</p>
+      </div>
+      <PromptGrid prompts={featured} empty="No featured prompts match this search yet." />
+    </MotionSection>
+  );
+}
+
+async function TrendingSection({ params }: { params: HomeParams }) {
+  const trending = await getPrompts({ search: params.q, category: params.category, aspectRatio: params.ratio, order: "trending", limit: 8 });
+  return (
+    <MotionSection className="section-shell mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
+      <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+        <div>
+          <p className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-brand">
+            <TrendingUp className="h-4 w-4" /> Community signals
+          </p>
+          <h2 className="mt-2 text-2xl font-bold">Trending prompts</h2>
+        </div>
+        <p className="max-w-xl text-sm text-slate-400">Prompts rising by likes and copies, so users quickly find what is working.</p>
+      </div>
+      <PromptGrid prompts={trending} empty="No trending prompts match this search yet." />
+    </MotionSection>
+  );
+}
+
+async function LatestSection({ params }: { params: HomeParams }) {
+  const latest = await getPrompts({ search: params.q, category: params.category, aspectRatio: params.ratio, order: "latest", limit: 12 });
+  return (
+    <MotionSection id="latest" className="section-shell mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
+      <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-wide text-brand">Fresh uploads</p>
+          <h2 className="mt-2 text-2xl font-bold">Latest prompts</h2>
+        </div>
+        <p className="max-w-xl text-sm text-slate-400">New image-generation ideas from the vault, ready to copy and remix.</p>
+      </div>
+      <PromptGrid prompts={latest} empty="No prompts yet. Be the first creator to publish one." />
+    </MotionSection>
+  );
+}
+
+function SectionFallback({ title }: { title: string }) {
+  return (
+    <section className="section-shell mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-white/40">{title}</h2>
+      </div>
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="card-surface overflow-hidden rounded-[28px]">
+            <div className="skeleton-shimmer aspect-[4/3]" />
+            <div className="space-y-3 p-4">
+              <div className="skeleton-shimmer h-3 w-24 rounded" />
+              <div className="skeleton-shimmer h-5 w-4/5 rounded" />
+              <div className="skeleton-shimmer h-4 w-full rounded" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export default async function Home({
+  searchParams
+}: {
+  searchParams: Promise<{ q?: string; category?: string; ratio?: string }>;
+}) {
+  const params = await searchParams;
+  return (
+    <MotionMain>
+      <Suspense fallback={<div className="flex min-h-[80vh] items-center justify-center"><div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-brand border-t-transparent" /></div>}>
+        <HomeHero params={params} />
+      </Suspense>
     </MotionMain>
   );
 }
