@@ -1,6 +1,6 @@
 import { SafeImage } from "@/components/safe-image";
 import Link from "next/link";
-import { CheckCircle2, Edit3, RotateCcw, Star, Trash2, XCircle } from "lucide-react";
+import { CheckCircle2, Edit3, RotateCcw, Sparkles, Star, Trash2, XCircle } from "lucide-react";
 import { AdminSubmitButton } from "@/components/admin-action-button";
 import { AdminTabs } from "@/components/admin-tabs";
 import { MotionMain, MotionSection } from "@/components/motion-primitives";
@@ -52,6 +52,10 @@ export default async function AdminPromptsPage({
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/admin" className="btn-ghost">Admin home</Link>
+          <Link href="/admin/prompts/new" className="btn-primary">
+            <Sparkles className="h-4 w-4" />
+            Add prompt
+          </Link>
           {filters.map((filter) => (
             <Link
               key={filter.value}

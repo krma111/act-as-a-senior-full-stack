@@ -1,27 +1,19 @@
-import { SafeImage } from "@/components/safe-image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { AdminTabs } from "@/components/admin-tabs";
-import { updateAdminPrompt } from "@/lib/admin-actions";
-import { getAdminPromptById } from "@/lib/admin-data";
+import { createAdminPrompt } from "@/lib/admin-actions";
+
+export const dynamic = "force-dynamic";
 
 const categories = ["portrait", "fashion", "product", "cinematic", "architecture", "fantasy", "social", "branding", "general"];
 const models = ["Midjourney", "DALL-E", "Flux", "Stable Diffusion", "Leonardo", "Ideogram", "Firefly", "Other"];
 const ratios = ["1:1", "9:16", "16:9", "4:5", "3:4"];
 
-export const dynamic = "force-dynamic";
-
-export default async function AdminEditPromptPage({
-  params,
+export default async function AdminNewPromptPage({
   searchParams
 }: {
-  params: Promise<{ id: string }>;
   searchParams: Promise<{ message?: string; error?: string }>;
 }) {
-  const [{ id }, query] = await Promise.all([params, searchParams]);
-  const prompt = await getAdminPromptById(id);
-
-  if (!prompt) notFound();
+  const query = await searchParams;
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
@@ -29,15 +21,13 @@ export default async function AdminEditPromptPage({
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand">Admin console</p>
-          <h1 className="mt-2 text-3xl font-black text-white">Edit prompt</h1>
-          <p className="mt-2 text-sm text-slate-400">Admin edits apply directly to the production prompt record.</p>
+          <h1 className="mt-2 text-3xl font-black text-white">Add prompt</h1>
+          <p className="mt-2 text-sm text-slate-400">Create a new prompt directly from the admin panel.</p>
         </div>
         <Link href="/admin/prompts" className="btn-ghost">Back to prompts</Link>
       </div>
 
-      <form action={updateAdminPrompt} className="card-surface grid gap-6 rounded-[28px] p-6 sm:p-8">
-        <input type="hidden" name="id" value={prompt.id} />
-
+      <form action={createAdminPrompt} className="card-surface grid gap-6 rounded-[28px] p-6 sm:p-8">
         {query.message || query.error ? (
           <div className={`rounded-2xl border p-4 text-sm ${query.error ? "border-red-500/30 bg-red-500/10 text-red-100" : "border-brand/30 bg-brand/10 text-brand"}`}>
             {query.error ?? query.message}
@@ -47,53 +37,49 @@ export default async function AdminEditPromptPage({
         <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
           <div className="space-y-3">
             <span className="label">Image</span>
-            <div className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-white/10 bg-black/40">
-              {prompt.image_url ? (
-                <SafeImage src={prompt.image_url} alt={prompt.title || "Prompt image"} fill className="object-cover" sizes="(min-width:1024px) 35vw, 100vw" />
-              ) : (
-                <div className="grid h-full place-items-center bg-brand/5 px-6 text-center text-sm text-slate-400">Text-only prompt</div>
-              )}
+            <div className="relative flex aspect-[4/3] items-center justify-center rounded-3xl border border-dashed border-white/15 bg-white/[0.03] p-6 text-center text-sm text-slate-400">
+              Upload an image or provide a URL below.
             </div>
             <label className="block space-y-2">
-              <span className="label">Replace image upload optional</span>
+              <span className="label">Image file upload optional</span>
               <input className="field" name="image_file" type="file" accept="image/*" />
-              <span className="text-xs text-slate-500">Maximum 8MB. Upload overrides the URL below.</span>
+              <span className="text-xs text-slate-500">Maximum 8MB.</span>
             </label>
             <label className="block space-y-2">
               <span className="label">Image URL optional</span>
-              <input className="field" name="image_url" type="url" defaultValue={prompt.image_url ?? ""} />
+              <input className="field" name="image_url" type="url" placeholder="https://example.com/image.jpg" />
             </label>
           </div>
 
           <div className="space-y-5">
             <label className="block space-y-2">
               <span className="label">Title</span>
-              <input className="field" name="title" required minLength={3} maxLength={160} defaultValue={prompt.title} />
+              <input className="field" name="title" required minLength={3} maxLength={160} placeholder="Enter prompt title" />
             </label>
             <label className="block space-y-2">
               <span className="label">Creator display name override</span>
-              <input className="field" name="creator_name" defaultValue={prompt.creator_name_override ?? ""} placeholder={prompt.creator_name ?? "Creator"} />
+              <input className="field" name="creator_name" placeholder="Leave empty to use admin name" />
             </label>
             <label className="block space-y-2">
               <span className="label">Description</span>
-              <textarea className="field min-h-24" name="description" maxLength={500} defaultValue={prompt.description ?? ""} />
+              <textarea className="field min-h-24" name="description" maxLength={500} placeholder="Short description" />
             </label>
             <label className="block space-y-2">
               <span className="label">Full prompt text</span>
-              <textarea className="field min-h-48" name="prompt_text" required minLength={10} defaultValue={prompt.prompt_text} />
+              <textarea className="field min-h-48" name="prompt_text" required minLength={10} placeholder="Enter the full prompt text" />
             </label>
           </div>
         </div>
 
         <label className="block space-y-2">
           <span className="label">Negative prompt</span>
-          <textarea className="field min-h-24" name="negative_prompt" defaultValue={prompt.negative_prompt ?? ""} />
+          <textarea className="field min-h-24" name="negative_prompt" placeholder="Optional negative prompt" />
         </label>
 
-        <div className="grid gap-5 md:grid-cols-3">
+        <div className="grid gap-5 md:grid-cols-4">
           <label className="block space-y-2">
             <span className="label">Category</span>
-            <select className="field" name="category" required defaultValue={prompt.category}>
+            <select className="field" name="category" required defaultValue="general">
               {categories.map((category) => (
                 <option key={category} value={category}>{category}</option>
               ))}
@@ -101,7 +87,7 @@ export default async function AdminEditPromptPage({
           </label>
           <label className="block space-y-2">
             <span className="label">Model</span>
-            <select className="field" name="ai_model" required defaultValue={prompt.ai_model ?? "Midjourney"}>
+            <select className="field" name="ai_model" required defaultValue="Midjourney">
               {models.map((model) => (
                 <option key={model} value={model}>{model}</option>
               ))}
@@ -109,78 +95,62 @@ export default async function AdminEditPromptPage({
           </label>
           <label className="block space-y-2">
             <span className="label">Aspect ratio</span>
-            <select className="field" name="aspect_ratio" required defaultValue={prompt.aspect_ratio ?? "1:1"}>
+            <select className="field" name="aspect_ratio" required defaultValue="1:1">
               {ratios.map((ratio) => (
                 <option key={ratio} value={ratio}>{ratio}</option>
               ))}
             </select>
           </label>
-        </div>
-
-        <div className="grid gap-5 md:grid-cols-3">
           <label className="block space-y-2">
             <span className="label">Status</span>
-            <select className="field" name="status" required defaultValue={prompt.status}>
+            <select className="field" name="status" defaultValue="pending">
               <option value="pending">pending</option>
               <option value="approved">approved</option>
               <option value="rejected">rejected</option>
             </select>
           </label>
+        </div>
+
+        <div className="grid gap-5 md:grid-cols-4">
+          <label className="block space-y-2">
+            <span className="label">Tags</span>
+            <input className="field" name="tags" placeholder="tag1, tag2, tag3" />
+          </label>
+          <label className="block space-y-2">
+            <span className="label">Price</span>
+            <input className="field" name="price" type="number" min="0" step="0.01" defaultValue="0" />
+          </label>
           <label className="block space-y-2">
             <span className="label">Visibility</span>
-            <select className="field" name="visibility" defaultValue={prompt.visibility}>
+            <select className="field" name="visibility" defaultValue="public">
               <option value="public">public</option>
               <option value="private">private</option>
             </select>
           </label>
           <label className="block space-y-2">
-            <span className="label">Tags</span>
-            <input className="field" name="tags" defaultValue={prompt.tags.join(", ")} />
-          </label>
-          <label className="block space-y-2">
-            <span className="label">Price</span>
-            <input className="field" name="price" type="number" min="0" step="0.01" defaultValue={prompt.price ?? 0} />
+            <span className="label">Rejection reason</span>
+            <input className="field" name="rejection_reason" placeholder="Required when rejecting" />
           </label>
         </div>
-
-        <div className="grid gap-5 md:grid-cols-3">
-          <label className="block space-y-2">
-            <span className="label">Copy count</span>
-            <input className="field" name="copy_count" type="number" min="0" step="1" defaultValue={prompt.copy_count ?? 0} />
-          </label>
-          <label className="block space-y-2">
-            <span className="label">Favourite/save count</span>
-            <input className="field" name="save_count" type="number" min="0" step="1" defaultValue={prompt.save_count ?? 0} />
-          </label>
-          <label className="block space-y-2">
-            <span className="label">View count</span>
-            <input className="field" value={prompt.view_count ?? 0} readOnly />
-          </label>
-        </div>
-
-        <label className="block space-y-2">
-          <span className="label">Rejection reason</span>
-          <input className="field" name="rejection_reason" defaultValue={prompt.rejection_reason ?? ""} placeholder="Required when rejecting" />
-        </label>
 
         <div className="grid gap-3 md:grid-cols-3">
           <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-300">
-            <input name="reference_required" type="checkbox" className="mt-1 h-4 w-4 accent-brand" defaultChecked={prompt.reference_required} />
+            <input name="reference_required" type="checkbox" className="mt-1 h-4 w-4 accent-brand" />
             <span>This prompt works best with a reference face or image.</span>
           </label>
           <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-300">
-            <input name="featured" type="checkbox" className="mt-1 h-4 w-4 accent-brand" defaultChecked={prompt.featured} />
+            <input name="featured" type="checkbox" className="mt-1 h-4 w-4 accent-brand" />
             <span>Feature this prompt on public discovery pages.</span>
           </label>
           <label className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-300">
-            <input name="hidden" type="checkbox" className="mt-1 h-4 w-4 accent-brand" defaultChecked={prompt.hidden} />
+            <input name="hidden" type="checkbox" className="mt-1 h-4 w-4 accent-brand" />
             <span>Hide from public browse pages.</span>
           </label>
         </div>
 
         <div className="flex flex-wrap justify-end gap-3 border-t border-white/10 pt-5">
           <Link href="/admin/prompts" className="btn-ghost">Cancel</Link>
-          <button className="btn-primary">Save prompt</button>
+          <button className="btn-primary">Create prompt</button>
         </div>
       </form>
     </main>

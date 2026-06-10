@@ -30,6 +30,8 @@ export type AdminPrompt = {
   save_count: number;
   price: number | null;
   featured: boolean;
+  visibility: string;
+  hidden: boolean;
   deleted_at: string | null;
   deleted_by: string | null;
   creator_name_override: string | null;
@@ -55,9 +57,11 @@ export type AdminStats = {
   totalApprovedSales: number;
 };
 
-type PromptRow = Omit<AdminPrompt, "creator_email" | "creator_name" | "creator_name_override" | "status" | "price"> & {
+type PromptRow = Omit<AdminPrompt, "creator_email" | "creator_name" | "creator_name_override" | "status" | "price" | "visibility" | "hidden"> & {
   status: string;
   price?: number | string | null;
+  visibility?: string;
+  hidden?: boolean | null;
   creator_name?: string | null;
 };
 type AdminPromptCounts = {
@@ -139,7 +143,7 @@ const profileSelect =
   "id,email,full_name,display_name,avatar_url,role,status,banned_at,banned_by,ban_reason,manual_badge_override,manual_badge_type,manual_badge_assigned_by,manual_badge_assigned_at,created_at,updated_at";
 const fallbackProfileSelect = "id,email,full_name,display_name,avatar_url,role,created_at,updated_at";
 const promptSelect =
-  "id,user_id,title,description,prompt_text,negative_prompt,image_url,category,tags,ai_model,aspect_ratio,reference_required,status,rejection_reason,copy_count,view_count,save_count,price,featured,deleted_at,deleted_by,creator_name,created_at,updated_at";
+  "id,user_id,title,description,prompt_text,negative_prompt,image_url,category,tags,ai_model,aspect_ratio,reference_required,status,rejection_reason,copy_count,view_count,save_count,price,featured,visibility,hidden,deleted_at,deleted_by,creator_name,created_at,updated_at";
 
 type AdminContext = Awaited<ReturnType<typeof getAuthSessionState>> & {
   supabase: NonNullable<Awaited<ReturnType<typeof getAuthSessionState>>["supabase"]>;
@@ -261,6 +265,8 @@ function normalizePrompt(row: PromptRow, creator?: Profile | null): AdminPrompt 
     price: row.price === null || row.price === undefined ? 0 : Number(row.price) || 0,
     featured: Boolean(row.featured),
     reference_required: Boolean(row.reference_required),
+    visibility: row.visibility ?? "public",
+    hidden: Boolean(row.hidden),
     deleted_at: row.deleted_at ?? null,
     deleted_by: row.deleted_by ?? null,
     creator_name_override: row.creator_name ?? null,
@@ -626,6 +632,56 @@ export async function getAdminPacks(status?: string) {
         creator_name: pack.creator_name ?? creator?.full_name ?? creator?.display_name ?? null,
         creator_name_row: pack.creator_name ?? null,
         total_prompts: Number(pack.total_prompts) || 0
+      };
+    }),
+    error: null,
+    activeStatus
+  };
+}
+
+export type AdminReport = {
+  id: string;
+  prompt_id: string;
+  user_id: string;
+  reason: string;
+  status: string;
+  created_at: string;
+  prompt_title: string | null;
+  prompt_hidden: boolean;
+  reporter_email: string | null;
+};
+
+export async function getAdminReports(status?: string) {
+  const { supabase } = await requireAdmin("/admin/reports");
+  const activeStatus = status === "open" || status === "resolved" || status === "dismissed" ? status : "all";
+  let query = supabase
+    .from("reports")
+    .select("id,prompt_id,user_id,reason,status,created_at,prompts!inner(title,hidden),profiles!inner(email)")
+    .order("created_at", { ascending: false });
+
+  if (activeStatus !== "all") query = query.eq("status", activeStatus);
+
+  const { data, error } = await query;
+  if (error) return { reports: [] as AdminReport[], error: error.message, activeStatus };
+
+  const rows = (data ?? []) as unknown as Array<Record<string, unknown>>;
+
+  function pluck<T>(value: unknown, fallback: T): T { return (value ?? fallback) as T; }
+
+  return {
+    reports: rows.map((row) => {
+      const prompts = pluck<Record<string, unknown> | null>(row.prompts, null);
+      const profiles = pluck<Record<string, unknown> | null>(row.profiles, null);
+      return {
+        id: String(row.id ?? ""),
+        prompt_id: String(row.prompt_id ?? ""),
+        user_id: String(row.user_id ?? ""),
+        reason: String(row.reason ?? ""),
+        status: String(row.status ?? "open"),
+        created_at: String(row.created_at ?? ""),
+        prompt_title: prompts ? String(prompts.title ?? "") : null,
+        prompt_hidden: prompts ? Boolean(prompts.hidden) : false,
+        reporter_email: profiles ? String(profiles.email ?? "") : null
       };
     }),
     error: null,

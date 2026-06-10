@@ -239,6 +239,48 @@ async function notifyPromptRejected(supabase: AdminSupabase, prompt: ModeratedPr
   });
 }
 
+export async function createAdminPrompt(formData: FormData) {
+  const { supabase, user } = await requireAdmin("/admin/prompts/new");
+  const errorPath = "/admin/prompts/new";
+  const validationError = validatePrompt(formData);
+  if (validationError) redirectWithMessage(errorPath, "error", validationError);
+
+  const status = cleanStatus(asString(formData, "status"));
+  const imageUpload = await uploadAdminPromptImage(supabase, formData, crypto.randomUUID());
+
+  const { data, error } = await supabase
+    .from("prompts")
+    .insert({
+      user_id: user.id,
+      title: asString(formData, "title"),
+      description: asString(formData, "description") || null,
+      prompt_text: asString(formData, "prompt_text"),
+      negative_prompt: asString(formData, "negative_prompt") || null,
+      image_url: imageUpload?.url ?? (asString(formData, "image_url") || null),
+      creator_name: asString(formData, "creator_name") || null,
+      category: asString(formData, "category").toLowerCase(),
+      tags: tagsFrom(asString(formData, "tags")),
+      ai_model: asString(formData, "ai_model"),
+      aspect_ratio: asString(formData, "aspect_ratio") || "1:1",
+      reference_required: asBoolean(formData, "reference_required"),
+      status,
+      rejection_reason: status === "rejected" ? asString(formData, "rejection_reason") || null : null,
+      featured: asBoolean(formData, "featured"),
+      visibility: asString(formData, "visibility") === "private" ? "private" : "public",
+      hidden: asBoolean(formData, "hidden"),
+      price: cleanMoney(asString(formData, "price")),
+      updated_at: new Date().toISOString()
+    })
+    .select("id")
+    .single();
+
+  if (error) redirectWithMessage(errorPath, "error", error.message);
+  await logAdminAction(supabase, user.id, "prompt_created", "prompts", data.id, null, { title: asString(formData, "title"), status });
+  revalidatePath("/");
+  revalidatePath("/admin/prompts");
+  redirectWithMessage("/admin/prompts", "message", "Prompt created.");
+}
+
 export async function approvePrompt(formData: FormData) {
   const { supabase, user } = await requireAdmin("/admin/prompts");
   const id = asString(formData, "id");
@@ -375,6 +417,8 @@ export async function updateAdminPrompt(formData: FormData) {
       reference_required: asBoolean(formData, "reference_required"),
       status,
       rejection_reason: rejectionReason,
+      visibility: asString(formData, "visibility") === "private" ? "private" : "public",
+      hidden: asBoolean(formData, "hidden"),
       featured: asBoolean(formData, "featured"),
       price: cleanMoney(asString(formData, "price")),
       copy_count: cleanInteger(asString(formData, "copy_count")),
@@ -553,6 +597,59 @@ export async function updateSiteSettings(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath("/admin/settings");
   redirectWithMessage("/admin/settings", "message", "Site content updated.");
+}
+
+export async function resolveReport(formData: FormData) {
+  const { supabase, user } = await requireAdmin("/admin/reports");
+  const id = asString(formData, "id");
+  if (!isValidUuid(id)) redirectWithMessage("/admin/reports", "error", "Report not found.");
+  const { data: oldValue } = await supabase.from("reports").select("*").eq("id", id).maybeSingle();
+  const { error } = await supabase.from("reports").update({ status: "resolved", updated_at: new Date().toISOString() }).eq("id", id);
+  if (error) redirectWithMessage("/admin/reports", "error", error.message);
+  await logAdminAction(supabase, user.id, "report_resolved", "reports", id, oldValue, { status: "resolved" });
+  revalidatePath("/admin/reports");
+  redirectWithMessage("/admin/reports", "message", "Report resolved.");
+}
+
+export async function dismissReport(formData: FormData) {
+  const { supabase, user } = await requireAdmin("/admin/reports");
+  const id = asString(formData, "id");
+  if (!isValidUuid(id)) redirectWithMessage("/admin/reports", "error", "Report not found.");
+  const { data: oldValue } = await supabase.from("reports").select("*").eq("id", id).maybeSingle();
+  const { error } = await supabase.from("reports").update({ status: "dismissed", updated_at: new Date().toISOString() }).eq("id", id);
+  if (error) redirectWithMessage("/admin/reports", "error", error.message);
+  await logAdminAction(supabase, user.id, "report_dismissed", "reports", id, oldValue, { status: "dismissed" });
+  revalidatePath("/admin/reports");
+  redirectWithMessage("/admin/reports", "message", "Report dismissed.");
+}
+
+export async function reopenReport(formData: FormData) {
+  const { supabase, user } = await requireAdmin("/admin/reports");
+  const id = asString(formData, "id");
+  if (!isValidUuid(id)) redirectWithMessage("/admin/reports", "error", "Report not found.");
+  const { data: oldValue } = await supabase.from("reports").select("*").eq("id", id).maybeSingle();
+  const { error } = await supabase.from("reports").update({ status: "open", updated_at: new Date().toISOString() }).eq("id", id);
+  if (error) redirectWithMessage("/admin/reports", "error", error.message);
+  await logAdminAction(supabase, user.id, "report_reopened", "reports", id, oldValue, { status: "open" });
+  revalidatePath("/admin/reports");
+  redirectWithMessage("/admin/reports", "message", "Report reopened.");
+}
+
+export async function hideReportedPrompt(formData: FormData) {
+  const { supabase, user } = await requireAdmin("/admin/reports");
+  const id = asString(formData, "id");
+  const promptId = asString(formData, "prompt_id");
+  if (!isValidUuid(id) || !isValidUuid(promptId)) redirectWithMessage("/admin/reports", "error", "Invalid report or prompt.");
+  const oldValue = await readPromptSnapshot(supabase, promptId);
+  const { error: promptError } = await supabase.from("prompts").update({ hidden: true, updated_at: new Date().toISOString() }).eq("id", promptId);
+  if (promptError) redirectWithMessage("/admin/reports", "error", promptError.message);
+  const { error: reportError } = await supabase.from("reports").update({ status: "resolved", updated_at: new Date().toISOString() }).eq("id", id);
+  if (reportError) redirectWithMessage("/admin/reports", "error", reportError.message);
+  await logAdminAction(supabase, user.id, "prompt_hidden_report_resolved", "prompts", promptId, oldValue, { hidden: true });
+  revalidatePath("/");
+  revalidatePath("/admin/prompts");
+  revalidatePath("/admin/reports");
+  redirectWithMessage("/admin/reports", "message", "Prompt hidden and report resolved.");
 }
 
 export async function upsertCategory(formData: FormData) {
