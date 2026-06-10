@@ -1,6 +1,6 @@
 ﻿import Link from "next/link";
-import { createCreatorPack } from "@/lib/creator-actions";
-import { requireDashboardUser } from "@/lib/creator-data";
+import { createCreatorPack } from "@/backend/actions/creators";
+import { requireDashboardUser } from "@/backend/data/creators";
 
 export const dynamic = "force-dynamic";
 

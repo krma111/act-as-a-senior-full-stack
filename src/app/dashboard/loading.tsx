@@ -1,4 +1,4 @@
-import { AuthLoadingCard } from "@/components/auth/auth-loading-card";
+import { AuthLoadingCard } from "@/frontend/components/auth/auth-loading-card";
 
 export default function Loading() {
   return <AuthLoadingCard />;

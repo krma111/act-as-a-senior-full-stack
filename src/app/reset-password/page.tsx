@@ -1,7 +1,7 @@
-import { AuthShell } from "@/components/auth/auth-shell";
-import { ResetPasswordForm } from "@/components/auth/reset-password-form";
-import { getAuthSessionState } from "@/lib/auth/session";
-import { hasSupabaseEnv } from "@/lib/env";
+import { AuthShell } from "@/frontend/components/auth/auth-shell";
+import { ResetPasswordForm } from "@/frontend/components/auth/reset-password-form";
+import { getAuthSessionState } from "@/backend/auth/session";
+import { hasSupabaseEnv } from "@/backend/env";
 
 export const dynamic = "force-dynamic";
 

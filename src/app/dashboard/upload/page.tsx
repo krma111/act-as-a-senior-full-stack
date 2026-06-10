@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { CreatorUploadForm } from "@/components/creator-upload-form";
-import { MotionMain } from "@/components/motion-primitives";
-import { requireDashboardUser } from "@/lib/creator-data";
+import { CreatorUploadForm } from "@/frontend/components/creator-upload-form";
+import { MotionMain } from "@/frontend/components/motion-primitives";
+import { requireDashboardUser } from "@/backend/data/creators";
 
 export const dynamic = "force-dynamic";
 

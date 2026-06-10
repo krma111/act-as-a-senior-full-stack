@@ -1,8 +1,8 @@
-import { SafeImage } from "@/components/safe-image";
+import { SafeImage } from "@/frontend/components/safe-image";
 import Link from "next/link";
 import { Edit3, PlusCircle } from "lucide-react";
-import { MotionMain, MotionSection } from "@/components/motion-primitives";
-import { getMyPrompts } from "@/lib/creator-data";
+import { MotionMain, MotionSection } from "@/frontend/components/motion-primitives";
+import { getMyPrompts } from "@/backend/data/creators";
 
 export const dynamic = "force-dynamic";
 

@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { Bot, ShieldCheck } from "lucide-react";
-import { AdminAiCreateWorkspace } from "@/components/admin-ai-create-workspace";
-import { AdminTabs } from "@/components/admin-tabs";
-import { MotionMain, MotionSection } from "@/components/motion-primitives";
-import { requireAdmin } from "@/lib/admin-data";
-import { hasSupabaseEnv } from "@/lib/env";
+import { AdminAiCreateWorkspace } from "@/frontend/components/admin-ai-create-workspace";
+import { AdminTabs } from "@/frontend/components/admin-tabs";
+import { MotionMain, MotionSection } from "@/frontend/components/motion-primitives";
+import { requireAdmin } from "@/backend/data/admin";
+import { hasSupabaseEnv } from "@/backend/env";
 
 export const dynamic = "force-dynamic";
 

@@ -1,6 +1,6 @@
-﻿import { AdminTabs } from "@/components/admin-tabs";
-import { upsertCategory, toggleCategory } from "@/lib/admin-actions";
-import { getAdminCategories } from "@/lib/admin-data";
+﻿import { AdminTabs } from "@/frontend/components/admin-tabs";
+import { upsertCategory, toggleCategory } from "@/backend/actions/admin";
+import { getAdminCategories } from "@/backend/data/admin";
 
 export const dynamic = "force-dynamic";
 

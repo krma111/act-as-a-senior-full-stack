@@ -1,4 +1,4 @@
-import { PublicPromptDetail } from "@/components/public-prompt-detail";
+import { PublicPromptDetail } from "@/frontend/components/public-prompt-detail";
 
 export default async function PromptSlugDetail({
   params,

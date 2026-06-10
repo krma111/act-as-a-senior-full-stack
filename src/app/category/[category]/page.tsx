@@ -1,7 +1,7 @@
-import { PromptGrid } from "@/components/prompt-grid";
-import { SearchFilters } from "@/components/search-filters";
-import { MotionMain, MotionSection } from "@/components/motion-primitives";
-import { getCategories, getPrompts } from "@/lib/data";
+import { PromptGrid } from "@/frontend/components/prompt-grid";
+import { SearchFilters } from "@/frontend/components/search-filters";
+import { MotionMain, MotionSection } from "@/frontend/components/motion-primitives";
+import { getCategories, getPrompts } from "@/backend/data/prompts";
 
 export default async function CategoryPage({
   params,

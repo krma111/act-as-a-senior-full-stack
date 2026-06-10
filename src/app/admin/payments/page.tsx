@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { CheckCircle2, ExternalLink, XCircle } from "lucide-react";
-import { AdminTabs } from "@/components/admin-tabs";
-import { AdminSubmitButton } from "@/components/admin-action-button";
-import { MotionMain, MotionSection } from "@/components/motion-primitives";
-import { approvePaymentRequest, rejectPaymentRequest } from "@/lib/admin-actions";
-import { getAdminPaymentRequests } from "@/lib/admin-data";
+import { AdminTabs } from "@/frontend/components/admin-tabs";
+import { AdminSubmitButton } from "@/frontend/components/admin-action-button";
+import { MotionMain, MotionSection } from "@/frontend/components/motion-primitives";
+import { approvePaymentRequest, rejectPaymentRequest } from "@/backend/actions/admin";
+import { getAdminPaymentRequests } from "@/backend/data/admin";
 
 export const dynamic = "force-dynamic";
 

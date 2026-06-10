@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { SafeImage } from "@/components/safe-image";
+import { SafeImage } from "@/frontend/components/safe-image";
 import { redirect } from "next/navigation";
 import { CheckCircle2, ExternalLink, Mail, Sparkles, UserRound } from "lucide-react";
-import { MotionMain, MotionSection } from "@/components/motion-primitives";
-import { logout, updateOwnProfile } from "@/lib/auth/actions";
-import { getAuthSessionState, getSavedPromptsForDashboard } from "@/lib/auth/session";
+import { MotionMain, MotionSection } from "@/frontend/components/motion-primitives";
+import { logout, updateOwnProfile } from "@/backend/auth/actions";
+import { getAuthSessionState, getSavedPromptsForDashboard } from "@/backend/auth/session";
 
 export const dynamic = "force-dynamic";
 

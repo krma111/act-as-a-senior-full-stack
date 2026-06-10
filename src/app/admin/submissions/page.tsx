@@ -1,7 +1,7 @@
 ﻿import Link from "next/link";
-import { AdminTabs } from "@/components/admin-tabs";
-import { MotionMain, MotionSection } from "@/components/motion-primitives";
-import { getAdminPrompts } from "@/lib/admin-data";
+import { AdminTabs } from "@/frontend/components/admin-tabs";
+import { MotionMain, MotionSection } from "@/frontend/components/motion-primitives";
+import { getAdminPrompts } from "@/backend/data/admin";
 
 export const dynamic = "force-dynamic";
 

@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AuthShell } from "@/components/auth/auth-shell";
-import { LoginForm } from "@/components/auth/login-form";
-import { getAuthSessionState } from "@/lib/auth/session";
-import { hasSupabaseEnv } from "@/lib/env";
+import { AuthShell } from "@/frontend/components/auth/auth-shell";
+import { LoginForm } from "@/frontend/components/auth/login-form";
+import { getAuthSessionState } from "@/backend/auth/session";
+import { hasSupabaseEnv } from "@/backend/env";
 
 export const dynamic = "force-dynamic";
 

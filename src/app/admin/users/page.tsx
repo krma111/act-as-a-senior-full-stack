@@ -1,11 +1,11 @@
-import { SafeImage } from "@/components/safe-image";
+import { SafeImage } from "@/frontend/components/safe-image";
 import Link from "next/link";
-import { AdminTabs } from "@/components/admin-tabs";
-import { CreatorBadge } from "@/components/creator-badge";
-import { MotionMain, MotionSection } from "@/components/motion-primitives";
-import { updateUserBadge, updateUserBan, updateUserRole } from "@/lib/admin-actions";
-import { getAdminUsers } from "@/lib/admin-data";
-import { creatorBadges, resolveCreatorBadge } from "@/lib/creator-badges";
+import { AdminTabs } from "@/frontend/components/admin-tabs";
+import { CreatorBadge } from "@/frontend/components/creator-badge";
+import { MotionMain, MotionSection } from "@/frontend/components/motion-primitives";
+import { updateUserBadge, updateUserBan, updateUserRole } from "@/backend/actions/admin";
+import { getAdminUsers } from "@/backend/data/admin";
+import { creatorBadges, resolveCreatorBadge } from "@/backend/creators/badges";
 
 export const dynamic = "force-dynamic";
 

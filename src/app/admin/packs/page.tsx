@@ -1,12 +1,12 @@
-import { SafeImage } from "@/components/safe-image";
+import { SafeImage } from "@/frontend/components/safe-image";
 import Link from "next/link";
 import { CheckCircle2, Trash2, XCircle } from "lucide-react";
-import { AdminTabs } from "@/components/admin-tabs";
-import { AdminSubmitButton } from "@/components/admin-action-button";
-import { AdminFlashToast } from "@/components/admin-flash-toast";
-import { MotionMain, MotionSection } from "@/components/motion-primitives";
-import { approvePack, deletePack, rejectPack } from "@/lib/admin-actions";
-import { getAdminPacks } from "@/lib/admin-data";
+import { AdminTabs } from "@/frontend/components/admin-tabs";
+import { AdminSubmitButton } from "@/frontend/components/admin-action-button";
+import { AdminFlashToast } from "@/frontend/components/admin-flash-toast";
+import { MotionMain, MotionSection } from "@/frontend/components/motion-primitives";
+import { approvePack, deletePack, rejectPack } from "@/backend/actions/admin";
+import { getAdminPacks } from "@/backend/data/admin";
 
 export const dynamic = "force-dynamic";
 

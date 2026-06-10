@@ -1,6 +1,6 @@
-﻿import { AdminTabs } from "@/components/admin-tabs";
-import { updateSiteSettings } from "@/lib/admin-actions";
-import { getAdminSiteSettings } from "@/lib/admin-data";
+﻿import { AdminTabs } from "@/frontend/components/admin-tabs";
+import { updateSiteSettings } from "@/backend/actions/admin";
+import { getAdminSiteSettings } from "@/backend/data/admin";
 
 export const dynamic = "force-dynamic";
 

@@ -1,6 +1,6 @@
-﻿import { AdminTabs } from "@/components/admin-tabs";
-import { toggleTag, upsertTag } from "@/lib/admin-actions";
-import { getAdminTags } from "@/lib/admin-data";
+﻿import { AdminTabs } from "@/frontend/components/admin-tabs";
+import { toggleTag, upsertTag } from "@/backend/actions/admin";
+import { getAdminTags } from "@/backend/data/admin";
 
 export const dynamic = "force-dynamic";
 

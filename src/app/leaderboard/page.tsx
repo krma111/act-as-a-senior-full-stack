@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { Trophy } from "lucide-react";
-import { CreatorBadge } from "@/components/creator-badge";
-import { MotionMain, MotionSection } from "@/components/motion-primitives";
-import { getCreatorLeaderboard } from "@/lib/data";
-import { creatorSlug } from "@/lib/slugs";
+import { CreatorBadge } from "@/frontend/components/creator-badge";
+import { MotionMain, MotionSection } from "@/frontend/components/motion-primitives";
+import { getCreatorLeaderboard } from "@/backend/data/prompts";
+import { creatorSlug } from "@/shared/constants/slugs";
 
 export const dynamic = "force-dynamic";
 

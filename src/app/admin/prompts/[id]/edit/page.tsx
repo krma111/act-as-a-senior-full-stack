@@ -1,9 +1,9 @@
-import { SafeImage } from "@/components/safe-image";
+import { SafeImage } from "@/frontend/components/safe-image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AdminTabs } from "@/components/admin-tabs";
-import { updateAdminPrompt } from "@/lib/admin-actions";
-import { getAdminPromptById } from "@/lib/admin-data";
+import { AdminTabs } from "@/frontend/components/admin-tabs";
+import { updateAdminPrompt } from "@/backend/actions/admin";
+import { getAdminPromptById } from "@/backend/data/admin";
 
 const categories = ["portrait", "fashion", "product", "cinematic", "architecture", "fantasy", "social", "branding", "general"];
 const models = ["Midjourney", "DALL-E", "Flux", "Stable Diffusion", "Leonardo", "Ideogram", "Firefly", "Other"];

@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-import { sendWelcomeEmailIfNeeded } from "@/lib/email";
-import { getSupabaseAnonKey, getSupabaseUrl, hasSupabaseEnv } from "@/lib/env";
+import { sendWelcomeEmailIfNeeded } from "@/backend/email/send";
+import { getSupabaseAnonKey, getSupabaseUrl, hasSupabaseEnv } from "@/backend/env";
 
 export async function POST(request: Request) {
   if (!hasSupabaseEnv) {

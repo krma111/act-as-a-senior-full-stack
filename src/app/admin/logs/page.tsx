@@ -1,5 +1,5 @@
-﻿import { AdminTabs } from "@/components/admin-tabs";
-import { getAdminLogs } from "@/lib/admin-data";
+﻿import { AdminTabs } from "@/frontend/components/admin-tabs";
+import { getAdminLogs } from "@/backend/data/admin";
 
 export const dynamic = "force-dynamic";
 

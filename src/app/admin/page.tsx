@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { Bot, Boxes, CreditCard, ShieldCheck, Sparkles, UsersRound } from "lucide-react";
-import { AdminTabs } from "@/components/admin-tabs";
-import { MotionMain, MotionSection } from "@/components/motion-primitives";
-import { updateSiteSettings } from "@/lib/admin-actions";
-import { getAdminSiteSettings, getAdminStats, requireAdmin } from "@/lib/admin-data";
+import { AdminTabs } from "@/frontend/components/admin-tabs";
+import { MotionMain, MotionSection } from "@/frontend/components/motion-primitives";
+import { updateSiteSettings } from "@/backend/actions/admin";
+import { getAdminSiteSettings, getAdminStats, requireAdmin } from "@/backend/data/admin";
 
 export const dynamic = "force-dynamic";
 

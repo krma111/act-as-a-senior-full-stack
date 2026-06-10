@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
-import { requireDashboardUser } from "@/lib/creator-data";
+import { requireDashboardUser } from "@/backend/data/creators";
 
 export const dynamic = "force-dynamic";
 

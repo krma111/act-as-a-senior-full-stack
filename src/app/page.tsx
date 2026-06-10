@@ -1,11 +1,11 @@
-import { SafeImage } from "@/components/safe-image";
+import { SafeImage } from "@/frontend/components/safe-image";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Sparkles, TrendingUp, UploadCloud } from "lucide-react";
-import { MotionDiv, MotionMain, MotionSection } from "@/components/motion-primitives";
-import { PromptGrid } from "@/components/prompt-grid";
-import { SearchFilters } from "@/components/search-filters";
-import { getCategories, getPrompts, getSiteSettings } from "@/lib/data";
-import { promptSlug } from "@/lib/slugs";
+import { MotionDiv, MotionMain, MotionSection } from "@/frontend/components/motion-primitives";
+import { PromptGrid } from "@/frontend/components/prompt-grid";
+import { SearchFilters } from "@/frontend/components/search-filters";
+import { getCategories, getPrompts, getSiteSettings } from "@/backend/data/prompts";
+import { promptSlug } from "@/shared/constants/slugs";
 
 export default async function Home({
   searchParams

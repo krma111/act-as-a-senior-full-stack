@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SafeImage } from "@/components/safe-image";
+import { SafeImage } from "@/frontend/components/safe-image";
 import { Toaster } from "sonner";
 import { LogOut, ShieldCheck } from "lucide-react";
 import "./globals.css";
-import { logout } from "@/lib/auth/actions";
-import { getAuthSessionState } from "@/lib/auth/session";
-import { getSiteSettings } from "@/lib/data";
+import { logout } from "@/backend/auth/actions";
+import { getAuthSessionState } from "@/backend/auth/session";
+import { getSiteSettings } from "@/backend/data/prompts";
 
 export const dynamic = "force-dynamic";
 

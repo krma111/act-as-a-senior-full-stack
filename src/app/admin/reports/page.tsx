@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { EyeOff, RotateCcw, ShieldCheck, XCircle } from "lucide-react";
-import { AdminSubmitButton } from "@/components/admin-action-button";
-import { AdminTabs } from "@/components/admin-tabs";
-import { MotionMain, MotionSection } from "@/components/motion-primitives";
-import { dismissReport, hideReportedPrompt, reopenReport, resolveReport } from "@/lib/admin-actions";
-import { getAdminReports } from "@/lib/admin-data";
+import { AdminSubmitButton } from "@/frontend/components/admin-action-button";
+import { AdminTabs } from "@/frontend/components/admin-tabs";
+import { MotionMain, MotionSection } from "@/frontend/components/motion-primitives";
+import { dismissReport, hideReportedPrompt, reopenReport, resolveReport } from "@/backend/actions/admin";
+import { getAdminReports } from "@/backend/data/admin";
 
 export const dynamic = "force-dynamic";
 

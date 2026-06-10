@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { AdminTabs } from "@/components/admin-tabs";
-import { createAdminPrompt } from "@/lib/admin-actions";
+import { AdminTabs } from "@/frontend/components/admin-tabs";
+import { createAdminPrompt } from "@/backend/actions/admin";
 
 export const dynamic = "force-dynamic";
 

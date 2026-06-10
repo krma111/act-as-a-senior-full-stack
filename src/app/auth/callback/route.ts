@@ -1,9 +1,9 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getAuthErrorMessage } from "@/lib/auth/errors";
-import { sendWelcomeEmailIfNeeded } from "@/lib/email";
-import { getSupabaseAnonKey, getSupabaseUrl, hasSupabaseEnv, siteUrl } from "@/lib/env";
+import { getAuthErrorMessage } from "@/backend/auth/errors";
+import { sendWelcomeEmailIfNeeded } from "@/backend/email/send";
+import { getSupabaseAnonKey, getSupabaseUrl, hasSupabaseEnv, siteUrl } from "@/backend/env";
 
 type CookieToSet = {
   name: string;
