@@ -1,6 +1,5 @@
-import { PublicCreatorProfile } from "@/frontend/components/public-creator-profile";
+﻿import { redirect } from "next/navigation";
 
-export default async function CreatorUsernamePage({ params }: { params: Promise<{ username: string }> }) {
-  const { username } = await params;
-  return <PublicCreatorProfile username={username} />;
+export default function CreatorRemoved() {
+  redirect("/packs");
 }

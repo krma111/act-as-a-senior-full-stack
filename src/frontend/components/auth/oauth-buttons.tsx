@@ -39,7 +39,7 @@ export function OAuthButtons({
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: getAuthCallbackUrl("/dashboard"),
+          redirectTo: getAuthCallbackUrl("/admin"),
           skipBrowserRedirect: true
         }
       });

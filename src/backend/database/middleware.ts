@@ -10,14 +10,13 @@ export async function updateSession(request: NextRequest) {
   if (!hasSupabaseEnv) return response;
 
   const { pathname, search } = request.nextUrl;
-  const isDashboardRoute = pathname.startsWith("/dashboard");
   const isAdminRoute = pathname.startsWith("/admin");
   const hasSessionCookie = hasSupabaseSessionCookie(request);
 
   // Never run remote auth checks in middleware. Vercel edge middleware has a
   // tight timeout, and Server Components/Actions already validate auth before
   // reading or mutating protected data.
-  if ((isDashboardRoute || isAdminRoute) && !hasSessionCookie) {
+  if (isAdminRoute && !hasSessionCookie) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.search = "";

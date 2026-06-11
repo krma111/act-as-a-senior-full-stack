@@ -5,17 +5,9 @@ import { motion } from "framer-motion";
 
 const tabs = [
   { href: "/admin", label: "Overview" },
-  { href: "/admin/ai-create", label: "AI Create" },
-  { href: "/admin/prompts", label: "Prompts" },
-  { href: "/admin/submissions", label: "Submissions" },
-  { href: "/admin/packs", label: "Packs" },
-  { href: "/admin/payments", label: "Payments" },
-  { href: "/admin/reports", label: "Reports" },
-  { href: "/admin/users", label: "Users" },
-  { href: "/admin/categories", label: "Categories" },
-  { href: "/admin/tags", label: "Tags" },
-  { href: "/admin/settings", label: "Site Settings" },
-  { href: "/admin/logs", label: "Logs" }
+  { href: "/admin/packs", label: "Prompt Packs" },
+  { href: "/admin/payments", label: "Orders" },
+  { href: "/admin/settings", label: "Site Settings" }
 ];
 
 export function AdminTabs({ active }: { active: string }) {

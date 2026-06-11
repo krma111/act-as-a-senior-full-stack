@@ -225,3 +225,38 @@ export async function sendFollowerApprovedPromptEmail(to: string, title: string,
     idempotencyKey: `prompt-approved-user-${promptId}-${userId}`
   });
 }
+
+export async function sendPromptPackDeliveryEmail(to: string, packTitle: string, fullContent: string, orderId: string) {
+  const safeTitle = packTitle.trim() || "PromptVault prompt pack";
+  const text = [
+    `Thank you for your PromptVault purchase.`,
+    ``,
+    `Your prompt pack is ready: ${safeTitle}`,
+    ``,
+    fullContent,
+    ``,
+    `Order ID: ${orderId}`
+  ].join("\n");
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;background:#050806;color:#f8fafc;padding:32px">
+      <div style="max-width:720px;margin:0 auto;border:1px solid rgba(34,255,0,.25);border-radius:24px;background:rgba(255,255,255,.06);padding:28px">
+        <p style="margin:0 0 12px;color:#22ff00;font-size:12px;letter-spacing:.22em;text-transform:uppercase">PromptVault Delivery</p>
+        <h1 style="margin:0 0 16px;font-size:28px;line-height:1.2">Your prompt pack is ready</h1>
+        <p style="margin:0 0 20px;color:#b8c8bf">Thank you for your purchase. Here is your full prompt pack:</p>
+        <h2 style="margin:0 0 12px;font-size:20px">${safeTitle}</h2>
+        <pre style="white-space:pre-wrap;word-break:break-word;background:#020402;border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:18px;color:#e8ffe4;line-height:1.6">${fullContent.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char] ?? char))}</pre>
+        <p style="margin:20px 0 0;color:#8fa59a;font-size:13px">Order ID: ${orderId}</p>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to,
+    subject: `Your PromptVault pack: ${safeTitle}`,
+    text,
+    html,
+    eventType: "prompt_pack_delivered",
+    idempotencyKey: `prompt-pack-delivered-${orderId}`
+  });
+}

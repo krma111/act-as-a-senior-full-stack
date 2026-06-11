@@ -1,100 +1,136 @@
 # PromptVault
 
-A production-ready Next.js, TypeScript, Tailwind CSS, and Supabase website for sharing text-to-image prompts with example images.
+PromptVault is a simplified no-login coding prompt pack store for vibe coders.
 
-## Features
+Users browse free and premium coding prompt packs. Free prompts can be copied immediately. Premium packs use a manual UPI checkout flow: the buyer enters an email, pays with QR/UPI, sends the payment screenshot by email, and the admin delivers the full pack after verification.
 
-- Dark premium prompt marketplace UI with search, categories, trending, latest, empty states, and responsive image grids
-- Supabase Auth with email/password, Google OAuth, optional GitHub OAuth, account recovery, and protected dashboard routes
-- Prompt publishing with image upload, category, tags, AI model, negative prompt, and public/private visibility
-- Prompt detail pages with copy count, favorite count, favorite button, report flow, tags, and creator metadata
-- Creator submission templates, automatic image aspect-ratio detection, max-5 tags, copy-protected counters, and creator crown badges
-- Resend-backed email notifications for welcome, submission received, approval, and rejection events
-- Admin dashboard for site settings, homepage text, categories, users, report moderation, featuring, hiding, and deleting prompts
-- SQL schema with RLS for public reads, user-owned writes, and admin override
+## MVP Features
 
-## Local setup
+- Public homepage with premium glassmorphism UI
+- Prompt pack listing at `/packs`
+- Prompt pack detail pages at `/packs/[slug]`
+- Free prompt copy buttons
+- Premium locked content previews
+- No user login required for purchases
+- No creator dashboard or upload flow
+- Manual UPI payment checkout modal
+- Order creation with buyer email and pending payment status
+- Admin dashboard for pack CRUD, order status management, and store settings
+- Optional Resend delivery when `RESEND_API_KEY` is configured
+- Supabase backend with simple `prompt_packs`, `orders`, and `site_settings` tables
 
-1. Install dependencies:
+## Environment Variables
 
-```bash
-npm install
-```
-
-2. Create `.env.local` from `.env.example`:
+Create `.env.local` from `.env.example`:
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
-NEXT_PUBLIC_ADMIN_EMAIL=you@example.com
-NEXT_PUBLIC_ENABLE_GITHUB_OAUTH=false
 RESEND_API_KEY=
+GEMINI_API_KEY=
 ```
 
-3. In Supabase SQL Editor, run the project SQL in this order:
+Required for production:
 
-```sql
--- existing app schema
-\i supabase/schema.sql
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
 
--- production profiles/prompts/saved prompts tables
-\i supabase/migrations/20260602090000_production_backend.sql
+Optional:
 
--- full_name profile alignment for auth
-\i supabase/migrations/20260602123000_auth_profiles_full_name.sql
+- `RESEND_API_KEY` sends full prompt packs automatically when admin marks an order delivered. If missing, admin can copy the generated email template manually.
+- `GEMINI_API_KEY` is not required for the MVP storefront.
+
+Never expose `SUPABASE_SERVICE_ROLE_KEY` or `RESEND_API_KEY` in client code.
+
+## Database Setup
+
+Run migrations in Supabase SQL Editor or with Supabase CLI. The MVP migration is:
+
+```text
+supabase/migrations/20260611090000_coding_prompt_pack_mvp.sql
 ```
 
-4. Before creating the admin user, replace the inserted `site_settings` email with the same email as `NEXT_PUBLIC_ADMIN_EMAIL`:
+It safely adds/updates:
 
-```sql
-update public.site_settings
-set admin_email = 'you@example.com'
-where id = 1;
-```
+- `prompt_packs`
+- `orders`
+- `site_settings`
+- indexes
+- RLS policies
+- starter approved prompt pack content
 
-5. Run the app:
+The migration is additive and does not delete old production data.
 
-```bash
-npm run dev
-```
+## Admin Setup
 
-6. Configure Supabase Auth:
+Admin access still uses the existing Supabase admin role protection.
 
-- Auth > URL Configuration
-  - Site URL locally: `http://localhost:3000`
-  - Site URL in production: `https://promptvault-ai-rho.vercel.app`
-  - Add redirect URL: `http://localhost:3000/auth/callback`
-  - Add production redirect URL: `https://promptvault-ai-rho.vercel.app/auth/callback`
-  - Add your custom-domain redirect URL too if you connect one, for example `https://your-domain.com/auth/callback`
-- Auth > Providers
-  - Enable Google in Supabase and add the Google Client ID and Client Secret.
-  - For this Supabase project, set the Google Cloud authorized redirect URI to `https://nxmveyrpvhnaaxszrchh.supabase.co/auth/v1/callback`
-  - Optional: enable GitHub in Supabase and set `NEXT_PUBLIC_ENABLE_GITHUB_OAUTH=true`
-  - In GitHub OAuth App, set the authorization callback URL to `https://<your-supabase-project-ref>.supabase.co/auth/v1/callback`
-- Auth > Email
-  - Keep email confirmations enabled if you want verified-email signup
-
-7. Sign up with the admin email, then set the admin role manually once:
+1. Create or sign in with your admin account.
+2. In Supabase SQL Editor, set the admin role:
 
 ```sql
 update public.profiles
 set role = 'admin'
-where lower(email) = lower('you@example.com');
+where lower(email) = lower('cdubey159@gmail.com');
 ```
 
-## Supabase notes
+3. Open `/admin`.
 
-- The `prompt-images` storage bucket is created by the SQL file and is public for reads.
-- `SUPABASE_SERVICE_ROLE_KEY` is used only by server actions in the admin dashboard. Never expose it in the browser.
-- Public visitors can view approved prompts. Authenticated users can access only their own profile and saved prompt data unless they are admins.
-- The app uses `/auth/callback` for email verification, OAuth, and password recovery redirects.
-- The protected dashboard lives at `/dashboard`. Legacy `/profile`, `/auth/login`, and `/auth/signup` routes now redirect to the new routes.
-- Normal OAuth login uses `/auth/callback` without a query string and lands on `/dashboard`.
-- Email notifications use the Resend SDK only when `RESEND_API_KEY` is configured. The sender is `PromptVault <onboarding@resend.dev>`. If the key is missing, the app logs a clear server error, records a skipped email event when possible, and the main prompt workflow still completes.
-- Set `RESEND_API_KEY` in Vercel Production, Preview, and Development environments, and keep it only in `.env.local` for local development. Never expose it through a `NEXT_PUBLIC_` variable.
+Admin can:
 
-## PR3 in progress
+- Add/edit/delete prompt packs
+- Set packs to `pending`, `approved`, or `rejected`
+- View buyer orders
+- Mark orders as `pending_payment`, `paid`, `delivered`, or `cancelled`
+- Send delivery email when Resend is configured
+- Copy manual email templates when Resend is not configured
+- Update admin email, UPI ID, QR code URL, homepage text, and categories
 
-This branch is used to complete missing live PromptVault feature parity and production QA fixes.
+## Local Development
+
+```bash
+pnpm install
+pnpm run dev
+```
+
+Or with npm:
+
+```bash
+npm install
+npm run dev
+```
+
+Open:
+
+```text
+http://localhost:3000
+```
+
+## Build Test
+
+```bash
+pnpm run lint
+pnpm run typecheck
+pnpm run build
+```
+
+## Vercel Deployment
+
+Set the required environment variables in Vercel Production and Preview:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `NEXT_PUBLIC_SITE_URL=https://promptvault-ai-rho.vercel.app`
+- `RESEND_API_KEY` optional
+
+Vercel build command:
+
+```bash
+pnpm run build
+```
+
+After push to `main`, Vercel should auto-deploy from GitHub.

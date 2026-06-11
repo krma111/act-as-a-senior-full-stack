@@ -29,7 +29,7 @@ export function LoginForm({
   const [password, setPassword] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [canResendVerification, setCanResendVerification] = useState(false);
-  const safeNextPath = useMemo(() => (nextPath?.startsWith("/") ? nextPath : "/dashboard"), [nextPath]);
+  const safeNextPath = useMemo(() => (nextPath?.startsWith("/") ? nextPath : "/admin"), [nextPath]);
 
   useEffect(() => {
     if (initialMessage) toast.success(initialMessage);
@@ -130,7 +130,7 @@ export function LoginForm({
     <form className="space-y-5" onSubmit={onSubmit}>
       <div>
         <h2 className="text-2xl font-bold text-white">Log in</h2>
-        <p className="mt-2 text-sm text-slate-400">Access your dashboard, saved prompts, and creator tools.</p>
+        <p className="mt-2 text-sm text-slate-400">Access admin pack, order, and payment settings.</p>
       </div>
 
       {!authEnabled ? (

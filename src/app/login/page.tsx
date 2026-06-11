@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AuthShell } from "@/frontend/components/auth/auth-shell";
 import { LoginForm } from "@/frontend/components/auth/login-form";
@@ -13,23 +12,18 @@ export default async function LoginPage({
   searchParams: Promise<{ message?: string; error?: string; next?: string }>;
 }) {
   const params = await searchParams;
-  const { user } = await getAuthSessionState();
+  const { user, profile } = await getAuthSessionState();
 
   if (user) {
-    redirect("/dashboard");
+    redirect(profile?.role === "admin" ? "/admin" : "/");
   }
 
   return (
     <AuthShell
       eyebrow="Secure access"
-      title="Welcome back to PromptVault"
-      description="Sign in to access your prompt vault, manage saved content, and continue building your creator library."
-      footer={
-        <>
-          Need an account?{" "}
-          <Link href="/signup" className="text-brand transition hover:text-brand/80">Create one</Link>
-        </>
-      }
+      title="PromptVault admin access"
+      description="Sign in only if you manage prompt packs, UPI settings, and buyer orders."
+      footer="Public buyers do not need an account. Purchases work with email checkout only."
     >
       <LoginForm authEnabled={hasSupabaseEnv} initialMessage={params.message} initialError={params.error} nextPath={params.next} />
     </AuthShell>
