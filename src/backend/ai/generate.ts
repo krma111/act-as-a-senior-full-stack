@@ -67,7 +67,7 @@ export async function generatePromptFromTopic(
         responseMimeType: "application/json"
       }
     }),
-    signal: AbortSignal.timeout(15000)
+    signal: AbortSignal.timeout(6500)
   });
 
   if (!response.ok) {

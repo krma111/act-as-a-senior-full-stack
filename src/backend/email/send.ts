@@ -10,9 +10,10 @@ import {
   welcomeEmailTemplate
 } from "@/backend/email/templates";
 import { createAdminClient } from "@/backend/database/admin";
+import { withTimeout } from "@/backend/utils/timeout";
 
 const emailFrom = (process.env.EMAIL_FROM?.trim() ?? "") || 'PromptVault <noreply@promptvault.com>';
-const maxAttempts = 3;
+const maxAttempts = 1;
 
 type EmailStatus = "sent" | "failed" | "skipped";
 
@@ -45,17 +46,21 @@ async function logEmailEvent(input: SendEmailInput, status: EmailStatus, error?:
 
   try {
     const supabase = createAdminClient();
-    await supabase.from("email_events").insert({
-      recipient_email: recipientsFrom(input.to).join(","),
-      recipient_user_id: input.recipientUserId ?? null,
-      prompt_id: input.promptId ?? null,
-      event_type: input.eventType,
-      subject: input.subject,
-      status,
-      provider: "resend",
-      error_message: error ?? null,
-      sent_at: status === "sent" ? new Date().toISOString() : null
-    });
+    await withTimeout(
+      supabase.from("email_events").insert({
+        recipient_email: recipientsFrom(input.to).join(","),
+        recipient_user_id: input.recipientUserId ?? null,
+        prompt_id: input.promptId ?? null,
+        event_type: input.eventType,
+        subject: input.subject,
+        status,
+        provider: "resend",
+        error_message: error ?? null,
+        sent_at: status === "sent" ? new Date().toISOString() : null
+      }),
+      3000,
+      "email event logging"
+    );
   } catch (error) {
     console.error("Email event logging failed", error);
   }
@@ -76,7 +81,7 @@ async function hasSentEmailEvent(eventType: string, recipientUserId?: string | n
       return false;
     }
 
-    const { data } = await query.maybeSingle();
+    const { data } = await withTimeout(query.maybeSingle(), 3000, "email event lookup");
     return Boolean(data);
   } catch (error) {
     console.error("Email event lookup failed", error);
@@ -105,7 +110,7 @@ async function sendEmailWithRetry(client: Resend, input: SendEmailInput) {
             : undefined
         ),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("Email send timed out")), 10000)
+          setTimeout(() => reject(new Error("Email send timed out")), 5000)
         )
       ]);
 

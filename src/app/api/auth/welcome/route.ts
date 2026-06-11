@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { sendWelcomeEmailIfNeeded } from "@/backend/email/send";
 import { getSupabaseAnonKey, getSupabaseUrl, hasSupabaseEnv } from "@/backend/env";
+import { getErrorMessage, withTimeout } from "@/backend/utils/timeout";
 
 export async function POST(request: Request) {
   if (!hasSupabaseEnv) {
@@ -27,7 +28,10 @@ export async function POST(request: Request) {
   const {
     data: { user },
     error
-  } = await supabase.auth.getUser();
+  } = await withTimeout(supabase.auth.getUser(), 4000, "welcome auth lookup").catch((error) => ({
+    data: { user: null },
+    error: { message: getErrorMessage(error, "Authenticated session required.") }
+  }));
 
   if (error || !user?.email) {
     return NextResponse.json({ error: "Authenticated session required." }, { status: 401 });
@@ -40,6 +44,9 @@ export async function POST(request: Request) {
         ? user.user_metadata.name
         : user.email.split("@")[0];
 
-  const result = await sendWelcomeEmailIfNeeded(user.email, name, user.id);
+  const result = await withTimeout(sendWelcomeEmailIfNeeded(user.email, name, user.id), 6000, "welcome email").catch((error) => ({
+    sent: false,
+    reason: getErrorMessage(error, "Welcome email timed out.")
+  }));
   return NextResponse.json(result);
 }

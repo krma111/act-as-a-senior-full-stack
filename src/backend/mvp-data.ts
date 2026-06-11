@@ -4,6 +4,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import { hasSupabaseEnv, hasSupabaseServiceRoleKey } from "@/backend/env";
 import { createAdminClient } from "@/backend/database/admin";
 import { createPublicClient } from "@/backend/database/public";
+import { getErrorMessage, withTimeout } from "@/backend/utils/timeout";
 
 export const promptPackCategories = [
   "Full App Build Prompts",
@@ -156,7 +157,11 @@ export async function getMvpSiteSettings(): Promise<MvpSiteSettings> {
   if (!supabase) return defaultSettings;
 
   try {
-    const { data, error } = await supabase.from("site_settings").select("*").eq("id", 1).maybeSingle();
+    const { data, error } = await withTimeout(
+      supabase.from("site_settings").select("*").eq("id", 1).maybeSingle(),
+      4500,
+      "site settings query"
+    );
     if (error || !data) return defaultSettings;
 
     return {
@@ -193,7 +198,7 @@ export async function getPublicPromptPacks(options?: { category?: string; search
     if (options?.free === "free") query = query.eq("is_free", true);
     if (options?.free === "paid") query = query.eq("is_free", false);
 
-    const { data, error } = await query.limit(options?.limit ?? 100);
+    const { data, error } = await withTimeout(query.limit(options?.limit ?? 100), 6000, "public prompt packs query");
     if (error) {
       console.error("[mvp-data] Failed to load prompt packs", error);
       return [];
@@ -222,12 +227,16 @@ export async function getPublicPromptPack(slug: string): Promise<PublicPromptPac
   if (!supabase) return null;
 
   try {
-    const { data, error } = await supabase
-      .from("prompt_packs")
-      .select("id,title,slug,description,category,price,is_free,is_paid,tools_supported,tech_stack,what_user_gets,preview_content,status,cover_image,total_prompts,created_at,updated_at")
-      .eq("slug", slug)
-      .eq("status", "approved")
-      .maybeSingle();
+    const { data, error } = await withTimeout(
+      supabase
+        .from("prompt_packs")
+        .select("id,title,slug,description,category,price,is_free,is_paid,tools_supported,tech_stack,what_user_gets,preview_content,status,cover_image,total_prompts,created_at,updated_at")
+        .eq("slug", slug)
+        .eq("status", "approved")
+        .maybeSingle(),
+      5000,
+      "public prompt pack detail query"
+    );
 
     if (error || !data) return null;
     return normalizePack(data as Record<string, unknown>);
@@ -251,12 +260,12 @@ export async function getAdminPromptPacks(filter?: string): Promise<{ packs: Adm
 
     if (filter && filter !== "all") query = query.eq("status", filter);
 
-    const { data, error } = await query;
+    const { data, error } = await withTimeout(query, 7000, "admin prompt packs query");
     if (error) return { packs: [] as AdminPromptPack[], error: error.message };
     const rows = (data ?? []) as Record<string, unknown>[];
     return { packs: rows.map((row) => normalizeAdminPack(row)), error: null };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to load prompt packs.";
+    const message = getErrorMessage(error, "Failed to load prompt packs.");
     console.error("[mvp-data] Admin packs failed", error);
     return { packs: [] as AdminPromptPack[], error: message };
   }
@@ -275,7 +284,7 @@ export async function getAdminOrders(filter?: string): Promise<{ orders: MvpOrde
 
     if (filter && filter !== "all") query = query.eq("status", filter);
 
-    const { data, error } = await query;
+    const { data, error } = await withTimeout(query, 7000, "admin orders query");
     if (error) return { orders: [] as MvpOrder[], error: error.message };
 
     const orderRowsRaw = (data ?? []) as Record<string, unknown>[];
@@ -294,7 +303,11 @@ export async function getAdminOrders(filter?: string): Promise<{ orders: MvpOrde
     const packIds = Array.from(new Set(orders.map((order) => order.prompt_pack_id).filter((id): id is string => Boolean(id))));
     const contentByPack = new Map<string, string>();
     if (packIds.length) {
-      const { data: packs } = await supabase.from("prompt_packs").select("id,full_content").in("id", packIds);
+      const { data: packs } = await withTimeout(
+        supabase.from("prompt_packs").select("id,full_content").in("id", packIds),
+        5000,
+        "admin order pack content query"
+      );
       for (const pack of ((packs ?? []) as Record<string, unknown>[])) {
         contentByPack.set(String(pack.id), typeof pack.full_content === "string" ? pack.full_content : "");
       }
@@ -305,7 +318,7 @@ export async function getAdminOrders(filter?: string): Promise<{ orders: MvpOrde
       error: null
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Failed to load orders.";
+    const message = getErrorMessage(error, "Failed to load orders.");
     console.error("[mvp-data] Admin orders failed", error);
     return { orders: [] as MvpOrder[], error: message };
   }
@@ -328,10 +341,14 @@ export async function getMvpAdminStats(): Promise<MvpAdminStats> {
   }
 
   try {
-    const [packs, orders] = await Promise.all([
-      supabase.from("prompt_packs").select("id,is_free,price,status"),
-      supabase.from("orders").select("id,status,price")
-    ]);
+    const [packs, orders] = await withTimeout(
+      Promise.all([
+        supabase.from("prompt_packs").select("id,is_free,price,status"),
+        supabase.from("orders").select("id,status,price")
+      ]),
+      7000,
+      "admin stats queries"
+    );
     const packRows = (packs.data ?? []) as Array<{ is_free?: boolean; price?: number | string; status?: string }>;
     const orderRows = (orders.data ?? []) as Array<{ status?: string; price?: number | string }>;
 
@@ -365,7 +382,16 @@ export async function getMvpAdminStats(): Promise<MvpAdminStats> {
 export async function getAdminFullPackContent(packId: string) {
   const supabase = getAdminDatabase();
   if (!supabase) return null;
-  const { data, error } = await supabase.from("prompt_packs").select("full_content").eq("id", packId).maybeSingle();
-  if (error || !data) return null;
-  return typeof data.full_content === "string" ? data.full_content : null;
+  try {
+    const { data, error } = await withTimeout(
+      supabase.from("prompt_packs").select("full_content").eq("id", packId).maybeSingle(),
+      5000,
+      "admin full pack content query"
+    );
+    if (error || !data) return null;
+    return typeof data.full_content === "string" ? data.full_content : null;
+  } catch (error) {
+    console.error("[mvp-data] Admin full pack content failed", error);
+    return null;
+  }
 }

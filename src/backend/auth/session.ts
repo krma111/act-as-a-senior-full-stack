@@ -2,6 +2,7 @@ import type { User } from "@supabase/supabase-js";
 import { hasSupabaseEnv } from "@/backend/env";
 import { createClient } from "@/backend/database/server";
 import type { Profile } from "@/shared/types";
+import { withTimeout } from "@/backend/utils/timeout";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -89,7 +90,11 @@ function normalizeProfile(user: User, row?: LooseProfileRow | null): Profile {
 }
 
 async function readProfileFromTable(supabase: SupabaseServerClient, table: "profiles" | "users", userId: string) {
-  const { data, error } = await supabase.from(table).select("*").eq("id", userId).maybeSingle();
+  const { data, error } = await withTimeout(
+    supabase.from(table).select("*").eq("id", userId).maybeSingle(),
+    4000,
+    `${table} profile lookup`
+  );
   if (error) return null;
   return data as LooseProfileRow | null;
 }
@@ -113,7 +118,7 @@ export async function getAuthSessionState(): Promise<AuthSessionState> {
   let user: User | null = null;
 
   try {
-    const result = await supabase.auth.getUser();
+    const result = await withTimeout(supabase.auth.getUser(), 4000, "Supabase auth user lookup");
     if (result.error) {
       return { supabase, user: null, profile: null };
     }

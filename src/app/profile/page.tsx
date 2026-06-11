@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function LegacyProfileRedirect() {
-  redirect("/dashboard");
+export default function RemovedProfileRoute() {
+  redirect("/packs");
 }

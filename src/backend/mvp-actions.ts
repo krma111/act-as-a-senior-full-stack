@@ -8,6 +8,7 @@ import { requireAdmin } from "@/backend/data/admin";
 import { createAdminClient } from "@/backend/database/admin";
 import { slugify } from "@/shared/constants/slugs";
 import { promptPackCategories, supportedTools } from "@/backend/mvp-data";
+import { getErrorMessage, withTimeout } from "@/backend/utils/timeout";
 
 const emailPattern = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
 const orderStatuses = new Set(["pending_payment", "paid", "delivered", "cancelled"]);
@@ -75,11 +76,15 @@ export async function createOrderAction(input: CreateOrderInput) {
   }
 
   try {
-    const { data: pack, error: packError } = await supabase
-      .from("prompt_packs")
-      .select("id,title,price,status,is_free")
-      .eq("id", input.packId)
-      .maybeSingle();
+    const { data: pack, error: packError } = await withTimeout(
+      supabase
+        .from("prompt_packs")
+        .select("id,title,price,status,is_free")
+        .eq("id", input.packId)
+        .maybeSingle(),
+      5000,
+      "checkout pack lookup"
+    );
 
     if (packError || !pack || pack.status !== "approved") {
       return { ok: false, error: "This prompt pack is not available right now." };
@@ -89,17 +94,21 @@ export async function createOrderAction(input: CreateOrderInput) {
       return { ok: false, error: "This is a free pack. Use the copy buttons instead." };
     }
 
-    const { data: order, error } = await supabase
-      .from("orders")
-      .insert({
-        buyer_email: buyerEmail,
-        prompt_pack_id: pack.id,
-        prompt_pack_title: pack.title,
-        price: Number(pack.price) || 0,
-        status: "pending_payment"
-      })
-      .select("id")
-      .single();
+    const { data: order, error } = await withTimeout(
+      supabase
+        .from("orders")
+        .insert({
+          buyer_email: buyerEmail,
+          prompt_pack_id: pack.id,
+          prompt_pack_title: pack.title,
+          price: Number(pack.price) || 0,
+          status: "pending_payment"
+        })
+        .select("id")
+        .single(),
+      6000,
+      "checkout order insert"
+    );
 
     if (error || !order) {
       return { ok: false, error: error?.message ?? "Unable to create order." };
@@ -111,7 +120,7 @@ export async function createOrderAction(input: CreateOrderInput) {
     return { ok: true, orderId: order.id as string, error: null };
   } catch (error) {
     console.error("[mvp-actions] createOrderAction failed", error);
-    return { ok: false, error: "Unable to create order. Please try again." };
+    return { ok: false, error: getErrorMessage(error, "Unable to create order. Please try again.") };
   }
 }
 
@@ -154,9 +163,13 @@ export async function upsertMvpPack(formData: FormData) {
     updated_at: new Date().toISOString()
   };
 
-  const result = id
-    ? await supabase.from("prompt_packs").update(payload).eq("id", id).select("id").maybeSingle()
-    : await supabase.from("prompt_packs").insert(payload).select("id").maybeSingle();
+  const result = await withTimeout(
+    id
+      ? supabase.from("prompt_packs").update(payload).eq("id", id).select("id").maybeSingle()
+      : supabase.from("prompt_packs").insert(payload).select("id").maybeSingle(),
+    7000,
+    "admin prompt pack upsert"
+  ).catch((error) => ({ data: null, error: { message: getErrorMessage(error, "Unable to save prompt pack.") } }));
 
   if (result.error) redirectWithMessage("/admin/packs", "error", result.error.message);
 
@@ -173,7 +186,8 @@ export async function deleteMvpPack(formData: FormData) {
   const id = asString(formData, "id");
   if (!id) redirectWithMessage("/admin/packs", "error", "Pack ID is missing.");
 
-  const { error } = await supabase.from("prompt_packs").delete().eq("id", id);
+  const { error } = await withTimeout(supabase.from("prompt_packs").delete().eq("id", id), 6000, "admin prompt pack delete")
+    .catch((error) => ({ error: { message: getErrorMessage(error, "Unable to delete prompt pack.") } }));
   if (error) redirectWithMessage("/admin/packs", "error", error.message);
 
   revalidatePath("/");
@@ -191,11 +205,15 @@ export async function updateMvpOrderStatus(formData: FormData) {
   if (!id) redirectWithMessage("/admin/payments", "error", "Order ID is missing.");
   if (!orderStatuses.has(status)) redirectWithMessage("/admin/payments", "error", "Invalid order status.");
 
-  const { data: order, error: orderError } = await supabase
-    .from("orders")
-    .select("id,buyer_email,prompt_pack_id,prompt_pack_title,status")
-    .eq("id", id)
-    .maybeSingle();
+  const { data: order, error: orderError } = await withTimeout(
+    supabase
+      .from("orders")
+      .select("id,buyer_email,prompt_pack_id,prompt_pack_title,status")
+      .eq("id", id)
+      .maybeSingle(),
+    5000,
+    "admin order lookup"
+  ).catch((error) => ({ data: null, error: { message: getErrorMessage(error, "Unable to load order.") } }));
 
   if (orderError || !order) redirectWithMessage("/admin/payments", "error", orderError?.message ?? "Order not found.");
 
@@ -205,15 +223,27 @@ export async function updateMvpOrderStatus(formData: FormData) {
     updated_at: new Date().toISOString()
   };
 
-  const { error } = await supabase.from("orders").update(payload).eq("id", id);
+  const { error } = await withTimeout(supabase.from("orders").update(payload).eq("id", id), 6000, "admin order update")
+    .catch((error) => ({ error: { message: getErrorMessage(error, "Unable to update order.") } }));
   if (error) redirectWithMessage("/admin/payments", "error", error.message);
 
   let message = `Order marked ${status.replace("_", " ")}.`;
   if (status === "delivered" && order.prompt_pack_id) {
-    const { data: pack } = await supabase.from("prompt_packs").select("full_content").eq("id", order.prompt_pack_id).maybeSingle();
+    const { data: pack } = await withTimeout(
+      supabase.from("prompt_packs").select("full_content").eq("id", order.prompt_pack_id).maybeSingle(),
+      5000,
+      "admin delivery pack lookup"
+    ).catch((error) => {
+      console.error("[mvp-actions] Delivery pack lookup failed", error);
+      return { data: null };
+    });
     const fullContent = typeof pack?.full_content === "string" ? pack.full_content : "";
     if (fullContent) {
-      const delivery = await sendPromptPackDeliveryEmail(order.buyer_email, order.prompt_pack_title, fullContent, order.id);
+      const delivery = await withTimeout(
+        sendPromptPackDeliveryEmail(order.buyer_email, order.prompt_pack_title, fullContent, order.id),
+        7000,
+        "prompt pack delivery email"
+      ).catch((error) => ({ sent: false, reason: getErrorMessage(error, "Email delivery timed out.") }));
       message = delivery.sent
         ? "Order marked delivered and email sent."
         : `Order marked delivered. Email not sent: ${delivery.reason}. Use the copy-ready template.`;
@@ -254,7 +284,8 @@ export async function updateMvpSettings(formData: FormData) {
     updated_at: new Date().toISOString()
   };
 
-  const { error } = await supabase.from("site_settings").upsert(payload, { onConflict: "id" });
+  const { error } = await withTimeout(supabase.from("site_settings").upsert(payload, { onConflict: "id" }), 6000, "admin settings update")
+    .catch((error) => ({ error: { message: getErrorMessage(error, "Unable to update settings.") } }));
   if (error) redirectWithMessage("/admin/settings", "error", error.message);
 
   revalidatePath("/");

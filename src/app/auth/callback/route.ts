@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { getAuthErrorMessage } from "@/backend/auth/errors";
 import { sendWelcomeEmailIfNeeded } from "@/backend/email/send";
 import { getSupabaseAnonKey, getSupabaseUrl, hasSupabaseEnv, siteUrl } from "@/backend/env";
+import { getErrorMessage, withTimeout } from "@/backend/utils/timeout";
 
 type CookieToSet = {
   name: string;
@@ -100,7 +101,14 @@ export async function GET(request: Request) {
     }
   });
 
-  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+  const { data, error } = await withTimeout(
+    supabase.auth.exchangeCodeForSession(code),
+    6000,
+    "Supabase auth callback exchange"
+  ).catch((error) => ({
+    data: { user: null },
+    error: { message: getErrorMessage(error, "Authentication callback timed out.") }
+  }));
 
   if (error) {
     return NextResponse.redirect(`${redirectOrigin}/login?error=${encodeURIComponent(getAuthErrorMessage(error))}`);
@@ -115,7 +123,10 @@ export async function GET(request: Request) {
           ? user.user_metadata.name
           : user.email.split("@")[0];
 
-    await sendWelcomeEmailIfNeeded(user.email, name, user.id);
+    await withTimeout(sendWelcomeEmailIfNeeded(user.email, name, user.id), 6000, "callback welcome email").catch((error) => {
+      console.error("[auth-callback] Welcome email skipped", error);
+      return null;
+    });
   }
 
   return NextResponse.redirect(`${redirectOrigin}${next}`);
