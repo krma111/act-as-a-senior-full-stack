@@ -15,12 +15,12 @@ This repository is the active PromptVault AI website project.
 - GitHub repository: krma111/act-as-a-senior-full-stack
 - Git remote: https://github.com/krma111/act-as-a-senior-full-stack.git
 - Production branch: main
-- Latest deployed commit: a3633c1a47b117185f955efbde6afebb20d32b0d
-- Latest deployed commit message: Fix Supabase authentication flow
-- Latest production deployment id: dpl_2tkoZfyQK7ZgG3caVvjJsebLqCpe
-- Latest production deployment URL: https://promptvault-js85i6l5r-krma111s-projects.vercel.app
+- Latest deployed commit: 20e236fb7a1e64a83c4c8311f7455ec5464fe8ee
+- Latest deployed commit message: Fix SVG preview rendering: remove CSP header and XML declaration, simplify SVG for browser compatibility
+- Latest production deployment id: dpl_1Tt861h14jQyySgw6LAsA3FZdqmB
+- Latest production deployment URL: https://promptvault-b08u5k2zg-krma111s-projects.vercel.app
 - Latest production status: Ready, promoted
-- Latest production creation time: 2026-06-03 01:02:38 Asia/Riyadh
+- Latest production creation time: 2026-06-10 08:14:03 Asia/Riyadh
 - Vercel framework: Next.js
 - Vercel Node version: 20.x
 - Vercel function region: iad1

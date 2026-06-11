@@ -112,6 +112,88 @@ export type Database = {
         Update: Record<string, unknown>;
         Relationships: [];
       };
+      profiles: {
+        Row: {
+          id: string;
+          email: string | null;
+          full_name: string | null;
+          display_name: string | null;
+          avatar_url: string | null;
+          role: string;
+          status: string | null;
+          banned_at: string | null;
+          banned_by: string | null;
+          ban_reason: string | null;
+          manual_badge_override: boolean | null;
+          manual_badge_type: string | null;
+          manual_badge_assigned_by: string | null;
+          manual_badge_assigned_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Record<string, unknown>;
+        Update: Record<string, unknown>;
+        Relationships: [];
+      };
+      prompt_packs: {
+        Row: {
+          id: string;
+          creator_id: string | null;
+          creator_name: string | null;
+          title: string;
+          description: string | null;
+          cover_image: string | null;
+          price: number | null;
+          is_paid: boolean | null;
+          status: string | null;
+          rejection_reason: string | null;
+          total_prompts: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Record<string, unknown>;
+        Update: Record<string, unknown>;
+        Relationships: [];
+      };
+      payment_requests: {
+        Row: {
+          id: string;
+          user_id: string;
+          pack_id: string;
+          order_id: string | null;
+          user_email: string | null;
+          amount: number;
+          currency: string;
+          whatsapp_proof_url: string | null;
+          whatsapp_proof_status: string | null;
+          screenshot_url: string | null;
+          screenshot_status: string | null;
+          access_link: string | null;
+          access_sent_at: string | null;
+          status: string;
+          rejection_reason: string | null;
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Record<string, unknown>;
+        Update: Record<string, unknown>;
+        Relationships: [];
+      };
+      user_pack_access: {
+        Row: {
+          id: string;
+          user_id: string;
+          pack_id: string;
+          granted_by: string | null;
+          granted_at: string;
+          created_at: string;
+        };
+        Insert: Record<string, unknown>;
+        Update: Record<string, unknown>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

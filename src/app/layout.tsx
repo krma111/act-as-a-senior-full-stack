@@ -54,6 +54,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <Link href="/leaderboard" className="btn-ghost">
                   Leaderboard
                 </Link>
+                <Link href="/packs" className="btn-ghost">
+                  Packs
+                </Link>
                 {user ? (
                   <>
                     {profile?.role === "admin" ? (

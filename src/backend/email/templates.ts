@@ -104,3 +104,49 @@ export function followerApprovedPromptEmailTemplate({ title, promptUrl }: Templa
     `)
   };
 }
+
+export function paymentReceivedEmailTemplate({ orderId, packTitle, amount }: { orderId: string; packTitle: string; amount: string }) {
+  return {
+    subject: `Payment Received - Order ${orderId}`,
+    text: `Your payment of ₹${amount} for "${packTitle}" (Order ${orderId}) has been received and is under review.`,
+    html: shell(`
+      <h1 style="margin:24px 0 12px;font-size:28px;line-height:1.15;color:#ffffff">Payment submission received</h1>
+      <p style="margin:0;color:#b8c8bf;line-height:1.7">Thank you for your payment of <strong style="color:#fff">₹${escapeHtml(amount)}</strong> for <strong style="color:#fff">${escapeHtml(packTitle)}</strong>.</p>
+      <div style="margin-top:18px;border-radius:16px;background:#0a1912;border:1px solid rgba(40,255,20,.2);padding:16px">
+        <p style="margin:0;color:#8fa59a;font-size:13px"><strong style="color:#b8c8bf">Order ID:</strong> ${escapeHtml(orderId)}</p>
+      </div>
+      <p style="margin:18px 0 0;color:#8fa59a;font-size:14px;line-height:1.6">Your payment will be verified by our team. Once approved, your prompt pack access link will be sent to this email.</p>
+    `)
+  };
+}
+
+export function paymentAccessLinkEmailTemplate({ packName, accessLink }: { packName: string; accessLink: string }) {
+  return {
+    subject: `Your ${packName} Access Link is Ready`,
+    text: `Your prompt pack "${packName}" is ready. Access it here: ${accessLink}`,
+    html: shell(`
+      <h1 style="margin:24px 0 12px;font-size:28px;line-height:1.15;color:#ffffff">Access granted</h1>
+      <p style="margin:0;color:#b8c8bf;line-height:1.7">Your prompt pack <strong style="color:#fff">${escapeHtml(packName)}</strong> is ready.</p>
+      <p style="margin:12px 0;color:#8fa59a;font-size:14px">Click the button below to access your unique pack link. This link is exclusive to you.</p>
+      ${button("Access your pack", accessLink)}
+    `)
+  };
+}
+
+export function paymentAdminNotificationEmailTemplate({ orderId, userEmail, packTitle, amount, screenshotUrl }: { orderId: string; userEmail: string; packTitle: string; amount: string; screenshotUrl: string }) {
+  return {
+    subject: `New Payment Submitted - Order ${orderId}`,
+    text: `New payment submission: Order ${orderId}, User: ${userEmail}, Pack: ${packTitle}, Amount: ₹${amount}. Review: ${screenshotUrl}`,
+    html: shell(`
+      <h1 style="margin:24px 0 12px;font-size:28px;line-height:1.15;color:#ffffff">New payment submission</h1>
+      <div style="margin-top:18px;border-radius:16px;background:#0a1912;border:1px solid rgba(255,200,50,.2);padding:16px">
+        <p style="margin:0 0 8px;color:#b8c8bf;font-size:14px"><strong>Order ID:</strong> ${escapeHtml(orderId)}</p>
+        <p style="margin:0 0 8px;color:#b8c8bf;font-size:14px"><strong>User:</strong> ${escapeHtml(userEmail)}</p>
+        <p style="margin:0 0 8px;color:#b8c8bf;font-size:14px"><strong>Pack:</strong> ${escapeHtml(packTitle)}</p>
+        <p style="margin:0 0 8px;color:#b8c8bf;font-size:14px"><strong>Amount:</strong> ₹${escapeHtml(amount)}</p>
+      </div>
+      ${button("View screenshot", screenshotUrl)}
+      ${button("Review payments", `/admin/payments`)}
+    `)
+  };
+}

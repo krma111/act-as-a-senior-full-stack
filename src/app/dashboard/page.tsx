@@ -161,6 +161,7 @@ export default async function DashboardPage({
               <p className="mt-2 text-sm text-slate-400">Your saved prompts will appear here after you start using the vault.</p>
               <div className="mt-5 flex flex-wrap justify-center gap-3">
                 <Link href="/dashboard/upload" className="btn-primary">Create prompt</Link>
+                <Link href="/dashboard/my-packs" className="btn-ghost">My packs</Link>
                 <Link href="/" className="btn-ghost">Explore prompts</Link>
               </div>
             </div>

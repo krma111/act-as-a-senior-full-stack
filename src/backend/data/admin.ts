@@ -6,7 +6,7 @@ export type AdminPromptStatus = "pending" | "approved" | "rejected";
 export type AdminPromptFilter = AdminPromptStatus | "all" | "featured" | "deleted";
 export type AdminRole = "admin" | "creator" | "user";
 export type PackStatus = "pending" | "approved" | "rejected";
-export type PaymentStatus = "pending" | "approved" | "rejected";
+export type PaymentStatus = "pending" | "submitted" | "approved" | "access_sent" | "rejected";
 
 export type AdminPrompt = {
   id: string;
@@ -91,15 +91,20 @@ export type AdminPaymentRequest = {
   id: string;
   user_id: string;
   pack_id: string;
+  order_id: string | null;
+  user_email: string | null;
   amount: number;
   currency: string;
   whatsapp_proof_url: string | null;
   whatsapp_proof_status: string | null;
+  screenshot_url: string | null;
+  screenshot_status: string | null;
+  access_link: string | null;
+  access_sent_at: string | null;
   status: PaymentStatus;
   rejection_reason: string | null;
   created_at: string;
   updated_at: string;
-  user_email: string | null;
   pack_name: string | null;
 };
 
@@ -486,7 +491,7 @@ function normalizePackStatus(value?: string | null): PackStatus {
 }
 
 function normalizePaymentStatus(value?: string | null): PaymentStatus {
-  if (value === "approved" || value === "rejected") return value;
+  if (value === "approved" || value === "rejected" || value === "submitted" || value === "access_sent") return value as PaymentStatus;
   return "pending";
 }
 
@@ -625,7 +630,7 @@ export async function getAdminPaymentRequests(status?: string) {
   const activeStatus = sanitizeModerationStatus(status);
   let query = supabase
     .from("payment_requests")
-    .select("id,user_id,pack_id,amount,currency,whatsapp_proof_url,whatsapp_proof_status,status,rejection_reason,created_at,updated_at")
+    .select("id,user_id,pack_id,order_id,user_email,amount,currency,whatsapp_proof_url,whatsapp_proof_status,screenshot_url,screenshot_status,access_link,access_sent_at,status,rejection_reason,created_at,updated_at")
     .order("created_at", { ascending: false });
 
   if (activeStatus !== "all") query = query.eq("status", activeStatus);
@@ -651,6 +656,7 @@ export async function getAdminPaymentRequests(status?: string) {
       currency: request.currency || "USD",
       status: normalizePaymentStatus(request.status),
       whatsapp_proof_status: request.whatsapp_proof_status ?? (request.whatsapp_proof_url ? "submitted" : "missing"),
+      screenshot_status: request.screenshot_status ?? (request.screenshot_url ? "submitted" : "missing"),
       user_email: profiles.get(request.user_id)?.email ?? null,
       pack_name: packNames.get(request.pack_id) ?? null
     })),
