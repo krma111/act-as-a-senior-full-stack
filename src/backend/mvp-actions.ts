@@ -56,6 +56,13 @@ function adminDb(): MvpSupabaseClient | null {
   return createAdminClient() as unknown as MvpSupabaseClient;
 }
 
+async function requireAdminDb(nextPath: string): Promise<MvpSupabaseClient> {
+  await requireAdmin(nextPath);
+  const supabase = adminDb();
+  if (!supabase) redirectWithMessage(nextPath, "error", "Admin database service is not configured. Add SUPABASE_SERVICE_ROLE_KEY on the server.");
+  return supabase;
+}
+
 export async function createOrderAction(input: CreateOrderInput) {
   const buyerEmail = input.buyerEmail.trim().toLowerCase();
   if (!emailPattern.test(buyerEmail)) {
@@ -109,8 +116,7 @@ export async function createOrderAction(input: CreateOrderInput) {
 }
 
 export async function upsertMvpPack(formData: FormData) {
-  const { supabase: rawSupabase } = await requireAdmin("/admin/packs");
-  const supabase = rawSupabase as unknown as MvpSupabaseClient;
+  const supabase = await requireAdminDb("/admin/packs");
   const id = asString(formData, "id");
   const title = asString(formData, "title");
   const description = asString(formData, "description");
@@ -163,8 +169,7 @@ export async function upsertMvpPack(formData: FormData) {
 }
 
 export async function deleteMvpPack(formData: FormData) {
-  const { supabase: rawSupabase } = await requireAdmin("/admin/packs");
-  const supabase = rawSupabase as unknown as MvpSupabaseClient;
+  const supabase = await requireAdminDb("/admin/packs");
   const id = asString(formData, "id");
   if (!id) redirectWithMessage("/admin/packs", "error", "Pack ID is missing.");
 
@@ -179,8 +184,7 @@ export async function deleteMvpPack(formData: FormData) {
 }
 
 export async function updateMvpOrderStatus(formData: FormData) {
-  const { supabase: rawSupabase } = await requireAdmin("/admin/payments");
-  const supabase = rawSupabase as unknown as MvpSupabaseClient;
+  const supabase = await requireAdminDb("/admin/payments");
   const id = asString(formData, "id");
   const status = asString(formData, "status");
 
@@ -224,8 +228,7 @@ export async function updateMvpOrderStatus(formData: FormData) {
 }
 
 export async function updateMvpSettings(formData: FormData) {
-  const { supabase: rawSupabase } = await requireAdmin("/admin/settings");
-  const supabase = rawSupabase as unknown as MvpSupabaseClient;
+  const supabase = await requireAdminDb("/admin/settings");
   const homepageTitle = asString(formData, "homepage_title");
   const homepageSubtitle = asString(formData, "homepage_subtitle");
   const adminEmail = asString(formData, "admin_email").toLowerCase();
