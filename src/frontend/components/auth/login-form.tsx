@@ -182,11 +182,11 @@ export function LoginForm({
         disabled={!authEnabled || isLoading}
       />
 
-      <div className="flex items-center justify-between gap-3">
-        <Link href="/forgot-password" className="text-sm text-brand transition hover:text-brand/80">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Link href="/forgot-password" className="text-center text-sm text-brand transition hover:text-brand/80 sm:text-left">
           Forgot password?
         </Link>
-        <button className="btn-primary min-w-[10rem]" disabled={!authEnabled || isLoading}>
+        <button className="btn-primary w-full sm:min-w-[10rem] sm:w-auto" disabled={!authEnabled || isLoading}>
           {isLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
           {isLoading ? "Logging in..." : "Log in"}
         </button>

@@ -17,7 +17,7 @@ export function PromptCard({ prompt, isAdmin = false }: { prompt: Prompt; isAdmi
 
   return (
     <motion.article
-      className="group card-surface overflow-hidden rounded-[28px] transition duration-500 hover:border-brand/50 hover:shadow-glow"
+      className="group card-surface min-w-0 overflow-hidden rounded-[28px] transition duration-500 hover:border-brand/50 hover:shadow-glow"
       initial={{ opacity: 0, y: 22, scale: 0.985 }}
       whileInView={{ opacity: 1, y: 0, scale: 1 }}
       whileHover={{ y: -10, rotateX: 1.8, rotateY: -1.8, scale: 1.012 }}
@@ -51,12 +51,12 @@ export function PromptCard({ prompt, isAdmin = false }: { prompt: Prompt; isAdmi
               {prompt.ai_model}
             </span>
           </div>
-          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2 text-xs text-slate-200">
+          <div className="absolute bottom-3 left-3 right-3 flex min-w-0 items-center justify-between gap-2 text-xs text-slate-200">
             <span className="flex min-w-0 items-center gap-1 rounded-full bg-slate-950/70 px-2.5 py-1 backdrop-blur">
               <span className="truncate">by {creator}</span>
               <CreatorBadge profile={prompt.users} compact />
             </span>
-            <span className="shrink-0 rounded-full bg-slate-950/70 px-2.5 py-1 backdrop-blur">{prompt.categories?.name ?? "Uncategorized"}</span>
+            <span className="max-w-[45%] shrink-0 truncate rounded-full bg-slate-950/70 px-2.5 py-1 backdrop-blur">{prompt.categories?.name ?? "Uncategorized"}</span>
           </div>
         </div>
       </Link>
@@ -77,22 +77,22 @@ export function PromptCard({ prompt, isAdmin = false }: { prompt: Prompt; isAdmi
           </div>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3 text-xs text-slate-400">
+        <div className="flex flex-col gap-3 border-t border-white/10 pt-3 text-xs text-slate-400 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <CopyPromptButton promptId={prompt.id} promptText={prompt.prompt_text} initialCopyCount={prompt.copy_count} variant="compact" showTargets />
           <span className="inline-flex items-center gap-1">
             <Heart className="h-3.5 w-3.5 text-brand" /> {prompt.like_count}
           </span>
         </div>
         {isAdmin ? (
-          <div className="flex flex-wrap gap-2 border-t border-white/10 pt-3">
+          <div className="grid grid-cols-1 gap-2 border-t border-white/10 pt-3 sm:flex sm:flex-wrap">
             <Link href={`/admin/prompts/${prompt.id}/edit`} className="btn-ghost px-3 py-2 text-xs">
               <Edit3 className="h-3.5 w-3.5" />
               Edit
             </Link>
-            <form action={deletePrompt}>
+            <form action={deletePrompt} className="w-full sm:w-auto">
               <input type="hidden" name="id" value={prompt.id} />
               <button
-                className="btn-ghost px-3 py-2 text-xs text-red-100"
+                className="btn-ghost w-full px-3 py-2 text-xs text-red-100"
                 onClick={(event) => {
                   if (!window.confirm("Move this prompt to deleted?")) event.preventDefault();
                 }}

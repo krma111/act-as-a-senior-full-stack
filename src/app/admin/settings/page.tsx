@@ -15,16 +15,16 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
   const settings = await getMvpSiteSettings();
 
   return (
-    <MotionMain className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
+    <MotionMain className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
       <AdminTabs active="Site Settings" />
       <AdminFlashToast message={params.message} error={params.error} />
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand">Admin console</p>
           <h1 className="hero-title mt-2 text-3xl font-black">Store settings</h1>
           <p className="mt-2 text-sm text-slate-400">Update payment instructions and public homepage content without editing code.</p>
         </div>
-        <Link href="/admin" className="btn-ghost">Admin home</Link>
+        <Link href="/admin" className="btn-ghost w-full sm:w-auto">Admin home</Link>
       </div>
 
       {(params.message || params.error) && (
@@ -33,8 +33,8 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
         </div>
       )}
 
-      <MotionSection className="card-surface rounded-[32px] p-6 sm:p-8">
-        <form action={updateMvpSettings} className="grid gap-5">
+      <MotionSection className="card-surface min-w-0 rounded-[32px] p-5 sm:p-8">
+        <form action={updateMvpSettings} className="grid min-w-0 gap-5">
           <div className="grid gap-4 md:grid-cols-2">
             <label className="block space-y-2">
               <span className="label">Website name</span>
@@ -76,7 +76,7 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
             <input className="field" name="footer_text" defaultValue={settings.footer_text} required />
           </label>
           <div>
-            <AdminSubmitButton className="btn-primary" pendingText="Saving...">Save settings</AdminSubmitButton>
+            <AdminSubmitButton className="btn-primary w-full sm:w-auto" pendingText="Saving...">Save settings</AdminSubmitButton>
           </div>
         </form>
       </MotionSection>

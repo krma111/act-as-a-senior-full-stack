@@ -12,7 +12,7 @@ export function MotionMain({ children, className, delay = 0, ...props }: MotionP
   return (
     <motion.main
       className={className}
-      initial={{ opacity: 0, y: 18 }}
+      initial={false}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.65, ease, delay }}
       {...props}
@@ -26,7 +26,7 @@ export function MotionSection({ children, className, delay = 0, ...props }: Moti
   return (
     <motion.section
       className={className}
-      initial={{ opacity: 0, y: 24, scale: 0.985 }}
+      initial={false}
       whileInView={{ opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true, margin: "-80px" }}
       transition={{ duration: 0.65, ease, delay }}
@@ -41,7 +41,7 @@ export function MotionDiv({ children, className, delay = 0, ...props }: MotionPr
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y: 18 }}
+      initial={false}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.55, ease, delay }}
       {...props}

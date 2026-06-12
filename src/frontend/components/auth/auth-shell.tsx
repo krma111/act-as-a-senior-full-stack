@@ -15,11 +15,11 @@ export function AuthShell({
   children: React.ReactNode;
 }) {
   return (
-    <MotionMain className="relative overflow-hidden px-4 py-12 sm:px-6 lg:px-8 lg:py-20">
+    <MotionMain className="relative overflow-hidden px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-20">
       <div className="hero-grid opacity-50" />
       <div className="hero-scan opacity-60" />
       <div className="pointer-events-none absolute left-1/2 top-0 h-64 w-64 -translate-x-1/2 rounded-full bg-brand/15 blur-3xl" />
-      <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+      <div className="mx-auto grid max-w-6xl min-w-0 gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:items-center">
         <section className="hidden lg:block">
           <div className="inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-4 py-2 text-sm font-semibold text-brand">
             {eyebrow}
@@ -44,8 +44,8 @@ export function AuthShell({
           </p>
         </section>
 
-        <section className="mx-auto w-full max-w-lg">
-          <MotionDiv className="card-surface rounded-[32px] p-6 sm:p-8" delay={0.08}>
+        <section className="mx-auto w-full max-w-lg min-w-0">
+          <MotionDiv className="card-surface min-w-0 rounded-[32px] p-5 sm:p-8" delay={0.08}>
             <div className="mb-8 lg:hidden">
               <p className="text-sm font-semibold uppercase tracking-[0.22em] text-brand">{eyebrow}</p>
               <h1 className="hero-title mt-3 text-3xl font-black">{title}</h1>

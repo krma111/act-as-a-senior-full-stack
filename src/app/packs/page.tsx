@@ -16,28 +16,28 @@ export default async function PacksPage({ searchParams }: { searchParams: Promis
   });
 
   return (
-    <MotionMain className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      <MotionSection className="panel rounded-[34px] p-6 text-center sm:p-10">
+    <MotionMain className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
+      <MotionSection className="panel min-w-0 rounded-[34px] p-5 text-center sm:p-10">
         <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand">Prompt pack store</p>
         <h1 className="hero-title mt-3 text-4xl font-black sm:text-5xl">Coding prompt packs</h1>
         <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-400">
           Browse copy-ready prompts for Codex, Cursor, Lovable, Replit, Bolt, Claude, and ChatGPT.
         </p>
 
-        <form className="mx-auto mt-6 grid max-w-3xl gap-3 md:grid-cols-[1fr_auto]">
+        <form className="mx-auto mt-6 grid max-w-3xl gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
           <label className="relative block">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
             <input className="field pl-11" name="q" defaultValue={params.q ?? ""} placeholder="Search packs, tools, stack..." />
           </label>
-          <button className="btn-primary">Search</button>
+          <button className="btn-primary w-full md:w-auto">Search</button>
         </form>
 
         <div className="mt-5 flex flex-wrap justify-center gap-2">
-          <Link href="/packs" className={!params.type && !params.category ? "btn-primary" : "btn-ghost"}>All</Link>
-          <Link href="/packs?type=free" className={params.type === "free" ? "btn-primary" : "btn-ghost"}>Free</Link>
-          <Link href="/packs?type=paid" className={params.type === "paid" ? "btn-primary" : "btn-ghost"}>Premium</Link>
+          <Link href="/packs" className={!params.type && !params.category ? "btn-primary max-w-full px-3 text-xs sm:text-sm" : "btn-ghost max-w-full px-3 text-xs sm:text-sm"}>All</Link>
+          <Link href="/packs?type=free" className={params.type === "free" ? "btn-primary max-w-full px-3 text-xs sm:text-sm" : "btn-ghost max-w-full px-3 text-xs sm:text-sm"}>Free</Link>
+          <Link href="/packs?type=paid" className={params.type === "paid" ? "btn-primary max-w-full px-3 text-xs sm:text-sm" : "btn-ghost max-w-full px-3 text-xs sm:text-sm"}>Premium</Link>
           {settings.categories.map((category) => (
-            <Link key={category} href={`/packs?category=${encodeURIComponent(category)}`} className={params.category === category ? "btn-primary" : "btn-ghost"}>
+            <Link key={category} href={`/packs?category=${encodeURIComponent(category)}`} className={params.category === category ? "btn-primary max-w-full px-3 text-xs sm:text-sm" : "btn-ghost max-w-full px-3 text-xs sm:text-sm"}>
               {category}
             </Link>
           ))}
@@ -46,7 +46,7 @@ export default async function PacksPage({ searchParams }: { searchParams: Promis
 
       <MotionSection className="mt-10">
         {packs.length ? (
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid min-w-0 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {packs.map((pack) => <PromptPackCard key={pack.id} pack={pack} />)}
           </div>
         ) : (

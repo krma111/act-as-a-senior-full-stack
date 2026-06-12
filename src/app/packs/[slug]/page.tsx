@@ -20,13 +20,13 @@ export default async function PackDetailPage({ params }: { params: Promise<{ slu
   const previewText = pack.preview_content.join("\n\n");
 
   return (
-    <MotionMain className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      <Link href="/packs" className="btn-ghost mb-6 inline-flex">
+    <MotionMain className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
+      <Link href="/packs" className="btn-ghost mb-6 inline-flex w-full sm:w-auto">
         <ArrowLeft className="h-4 w-4" /> Back to packs
       </Link>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_380px] lg:items-start">
-        <MotionSection className="card-surface rounded-[34px] p-6 sm:p-8">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,380px)] lg:items-start">
+        <MotionSection className="card-surface min-w-0 rounded-[34px] p-5 sm:p-8">
           <span className="rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-brand">
             {pack.category}
           </span>
@@ -66,12 +66,12 @@ export default async function PackDetailPage({ params }: { params: Promise<{ slu
             <p className="flex items-center gap-2 text-sm font-bold uppercase tracking-[0.2em] text-brand">
               <Code2 className="h-4 w-4" /> Preview prompts
             </p>
-            <div className="mt-4 grid gap-4">
+            <div className="mt-4 grid min-w-0 gap-4">
               {pack.preview_content.length ? pack.preview_content.map((prompt, index) => (
-                <div key={`${pack.id}-preview-${index}`} className="rounded-3xl border border-white/10 bg-black/25 p-5">
+                <div key={`${pack.id}-preview-${index}`} className="min-w-0 rounded-3xl border border-white/10 bg-black/25 p-5">
                   <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Preview {index + 1}</p>
-                  <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-200">{prompt}</p>
-                  {pack.is_free ? <CopyTextButton text={prompt} label="Copy this prompt" className="btn-ghost mt-4" /> : null}
+                  <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-slate-200">{prompt}</p>
+                  {pack.is_free ? <CopyTextButton text={prompt} label="Copy this prompt" className="btn-ghost mt-4 w-full sm:w-auto" /> : null}
                 </div>
               )) : (
                 <div className="rounded-3xl border border-white/10 bg-black/25 p-5 text-sm text-slate-400">No preview prompts yet.</div>
@@ -80,7 +80,7 @@ export default async function PackDetailPage({ params }: { params: Promise<{ slu
           </div>
         </MotionSection>
 
-        <MotionSection className="card-surface sticky top-28 rounded-[34px] p-6">
+        <MotionSection className="card-surface rounded-[34px] p-5 sm:p-6 lg:sticky lg:top-28">
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-brand">Access</p>
           <h2 className="mt-3 text-2xl font-black text-white">{pack.is_free ? "Free copy access" : "Premium locked pack"}</h2>
           <p className="mt-3 text-sm leading-6 text-slate-400">

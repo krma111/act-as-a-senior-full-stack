@@ -34,8 +34,8 @@ export async function PublicPromptDetail({ idOrSlug, message, error }: { idOrSlu
   const creatorHref = `/creator/${prompt.users ? creatorSlug(prompt.users) : prompt.user_id}`;
 
   return (
-    <MotionMain className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8">
-      <MotionSection className="card-surface overflow-hidden rounded-[34px]">
+    <MotionMain className="mx-auto grid max-w-7xl min-w-0 gap-8 px-4 py-10 sm:px-6 sm:py-12 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:px-8">
+      <MotionSection className="card-surface min-w-0 overflow-hidden rounded-[34px]">
         <div className="relative aspect-[4/3]">
           {prompt.image_url ? (
             <SafeImage
@@ -54,8 +54,8 @@ export async function PublicPromptDetail({ idOrSlug, message, error }: { idOrSlu
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(34,255,0,0.18),transparent_52%)]" />
         </div>
       </MotionSection>
-      <MotionSection className="space-y-6" delay={0.08}>
-        <div>
+      <MotionSection className="min-w-0 space-y-6" delay={0.08}>
+        <div className="min-w-0">
           <div className="mb-3 flex flex-wrap gap-2">
             {prompt.featured && <span className="status-pill border-brand/30 bg-brand px-3 py-1 text-slate-950">Featured</span>}
             <Link href={`/category/${prompt.categories?.slug ?? "uncategorized"}`} className="status-pill border-white/10 bg-white/10 text-slate-300 hover:text-brand">
@@ -65,7 +65,7 @@ export async function PublicPromptDetail({ idOrSlug, message, error }: { idOrSlu
             {prompt.aspect_ratio && <span className="status-pill border-white/10 bg-white/10 text-slate-300">{prompt.aspect_ratio}</span>}
           </div>
           <h1 className="hero-title text-3xl font-black tracking-normal sm:text-4xl">{prompt.title}</h1>
-          <Link href={creatorHref} className="mt-4 inline-flex items-center gap-2 text-sm text-slate-300 hover:text-brand">
+          <Link href={creatorHref} className="mt-4 inline-flex max-w-full flex-wrap items-center gap-2 text-sm text-slate-300 hover:text-brand">
             <User className="h-4 w-4" /> {creatorName}
             <CreatorBadge profile={prompt.users} compact />
           </Link>
@@ -86,7 +86,7 @@ export async function PublicPromptDetail({ idOrSlug, message, error }: { idOrSlu
           </div>
           <div className="panel rounded-[24px] p-4">
             <p className="text-sm text-slate-400">Model</p>
-            <p className="mt-1 text-lg font-bold text-white">{prompt.ai_model}</p>
+            <p className="mt-1 break-words text-lg font-bold text-white">{prompt.ai_model}</p>
           </div>
           <div className="panel rounded-[24px] p-4">
             <p className="text-sm text-slate-400">Aspect ratio</p>
@@ -94,16 +94,16 @@ export async function PublicPromptDetail({ idOrSlug, message, error }: { idOrSlu
           </div>
         </div>
 
-        {prompt.description && <p className="card-surface rounded-[24px] p-5 text-sm leading-7 text-slate-300">{prompt.description}</p>}
+        {prompt.description && <p className="card-surface break-words rounded-[24px] p-5 text-sm leading-7 text-slate-300">{prompt.description}</p>}
 
-        <div className="card-surface rounded-[24px] p-5">
+        <div className="card-surface min-w-0 rounded-[24px] p-5">
           <h2 className="mb-3 font-semibold">Full prompt</h2>
-          <pre className="whitespace-pre-wrap font-sans text-sm leading-7 text-slate-200">{prompt.prompt_text}</pre>
+          <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-7 text-slate-200">{prompt.prompt_text}</pre>
         </div>
         {prompt.negative_prompt && (
-          <div className="card-surface rounded-[24px] p-5">
+          <div className="card-surface min-w-0 rounded-[24px] p-5">
             <h2 className="mb-3 font-semibold">Negative prompt</h2>
-            <pre className="whitespace-pre-wrap font-sans text-sm leading-7 text-slate-300">{prompt.negative_prompt}</pre>
+            <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-7 text-slate-300">{prompt.negative_prompt}</pre>
           </div>
         )}
         <div className="flex flex-wrap gap-2">
@@ -113,13 +113,13 @@ export async function PublicPromptDetail({ idOrSlug, message, error }: { idOrSlu
             </Link>
           ))}
         </div>
-        <form action={reportPrompt} className="card-surface rounded-[24px] p-4">
+        <form action={reportPrompt} className="card-surface min-w-0 rounded-[24px] p-4">
           <input type="hidden" name="prompt_id" value={prompt.id} />
           <label className="block space-y-2">
             <span className="label">Report this prompt</span>
             <textarea className="field min-h-20" name="reason" placeholder="Tell admins what looks wrong" />
           </label>
-          <button className="btn-ghost mt-3"><Flag className="h-4 w-4" /> Submit report</button>
+          <button className="btn-ghost mt-3 w-full sm:w-auto"><Flag className="h-4 w-4" /> Submit report</button>
         </form>
       </MotionSection>
     </MotionMain>

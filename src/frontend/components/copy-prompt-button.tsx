@@ -46,10 +46,10 @@ export function CopyPromptButton({ promptId, promptText, initialCopyCount, varia
 
   if (variant === "compact") {
     return (
-      <div className="space-y-2">
+      <div className="min-w-0 space-y-2">
         <motion.button
           type="button"
-          className="btn-ghost px-3 py-2 text-xs"
+          className="btn-ghost w-full px-3 py-2 text-xs sm:w-auto"
           disabled={pending}
           onClick={copyPrompt}
           whileHover={pending ? undefined : { y: -2, scale: 1.02 }}
@@ -63,10 +63,10 @@ export function CopyPromptButton({ promptId, promptText, initialCopyCount, varia
   }
 
   return (
-    <div className="space-y-2">
+    <div className="min-w-0 space-y-2">
       <motion.button
         type="button"
-        className="btn-primary"
+        className="btn-primary w-full sm:w-auto"
         disabled={pending}
         onClick={copyPrompt}
         whileHover={pending ? undefined : { y: -2, scale: 1.018 }}
@@ -82,7 +82,7 @@ export function CopyPromptButton({ promptId, promptText, initialCopyCount, varia
 function CopyTargets() {
   return (
     <motion.div
-      className="flex flex-wrap items-center gap-2 rounded-2xl border border-brand/20 bg-brand/10 p-2 text-xs text-slate-200 shadow-glow backdrop-blur-xl"
+      className="flex min-w-0 flex-col items-stretch gap-2 rounded-2xl border border-brand/20 bg-brand/10 p-2 text-xs text-slate-200 shadow-glow backdrop-blur-xl sm:flex-row sm:flex-wrap sm:items-center"
       initial={{ opacity: 0, y: -8, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -8, scale: 0.96 }}

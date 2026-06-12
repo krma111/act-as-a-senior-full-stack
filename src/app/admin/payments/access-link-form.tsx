@@ -25,9 +25,9 @@ export function AccessLinkForm({ id, userId, packId, userEmail, packName }: Prop
 
       <label className="block space-y-1">
         <span className="text-xs font-semibold text-slate-400">Unique access link</span>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <input className="field flex-1" name="access_link" type="url" placeholder="https://..." required />
-          <button className="btn-primary whitespace-nowrap" disabled={pending}>
+          <button className="btn-primary w-full whitespace-nowrap sm:w-auto" disabled={pending}>
             {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
             {pending ? "Sending..." : "Approve & send"}
           </button>

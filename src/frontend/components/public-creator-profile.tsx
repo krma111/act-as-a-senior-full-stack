@@ -8,11 +8,11 @@ export async function PublicCreatorProfile({ username }: { username: string }) {
   const creatorName = creator?.full_name ?? creator?.display_name ?? creator?.email?.split("@")[0] ?? "Creator";
 
   return (
-    <MotionMain className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-      <MotionSection className="panel rounded-[34px] p-6">
+    <MotionMain className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
+      <MotionSection className="panel min-w-0 rounded-[34px] p-5 sm:p-6">
         <p className="text-sm uppercase tracking-wide text-brand">Creator</p>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <h1 className="hero-title text-3xl font-black">{creatorName}</h1>
+        <div className="mt-2 flex min-w-0 flex-wrap items-center gap-3">
+          <h1 className="hero-title break-words text-3xl font-black">{creatorName}</h1>
           <CreatorBadge profile={creator} hideEmpty={false} />
         </div>
         <p className="mt-2 text-slate-400">

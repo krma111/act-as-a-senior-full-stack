@@ -30,19 +30,19 @@ export default async function AdminPacksPage({ searchParams }: { searchParams: P
   const categories = settings.categories.length ? settings.categories : promptPackCategories;
 
   return (
-    <MotionMain className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+    <MotionMain className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
       <AdminTabs active="Prompt Packs" />
       <AdminFlashToast message={params.message} error={params.error ?? packResult.error ?? undefined} />
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand">Admin console</p>
           <h1 className="hero-title mt-2 text-3xl font-black">Coding prompt packs</h1>
           <p className="mt-2 text-sm text-slate-400">Add, edit, approve, reject, or delete store packs. Public pages show only approved packs.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/admin" className="btn-ghost">Admin home</Link>
+        <div className="flex w-full flex-wrap gap-2 lg:w-auto lg:justify-end">
+          <Link href="/admin" className="btn-ghost max-w-full px-3 text-xs sm:text-sm">Admin home</Link>
           {filters.map((filter) => (
-            <Link key={filter} href={filter === "all" ? "/admin/packs" : `/admin/packs?status=${filter}`} className={(params.status ?? "all") === filter ? "btn-primary" : "btn-ghost"}>
+            <Link key={filter} href={filter === "all" ? "/admin/packs" : `/admin/packs?status=${filter}`} className={(params.status ?? "all") === filter ? "btn-primary max-w-full px-3 text-xs sm:text-sm" : "btn-ghost max-w-full px-3 text-xs sm:text-sm"}>
               {filter[0].toUpperCase() + filter.slice(1)}
             </Link>
           ))}
@@ -55,7 +55,7 @@ export default async function AdminPacksPage({ searchParams }: { searchParams: P
         </div>
       )}
 
-      <MotionSection className="card-surface rounded-[32px] p-6 sm:p-8">
+      <MotionSection className="card-surface min-w-0 rounded-[32px] p-5 sm:p-8">
         <div className="mb-5 flex items-center gap-3">
           <Plus className="h-6 w-6 text-brand" />
           <div>
@@ -74,30 +74,30 @@ export default async function AdminPacksPage({ searchParams }: { searchParams: P
           </div>
         ) : (
           packResult.packs.map((pack) => (
-            <article key={pack.id} className="card-surface rounded-[32px] p-5 sm:p-6">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div>
+            <article key={pack.id} className="card-surface min-w-0 rounded-[32px] p-5 sm:p-6">
+              <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
                   <div className="flex flex-wrap gap-2">
                     <span className={`rounded-full border px-3 py-1 text-xs font-bold uppercase ${statusClass(pack.status)}`}>{pack.status}</span>
                     <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-300">{formatPrice(pack)}</span>
                     <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-300">{pack.category}</span>
                   </div>
-                  <h2 className="mt-3 text-2xl font-black text-white">{pack.title}</h2>
+                  <h2 className="mt-3 break-words text-2xl font-black text-white">{pack.title}</h2>
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">{pack.description || "No description."}</p>
-                  <p className="mt-2 text-xs text-slate-500">Slug: {pack.slug}</p>
+                  <p className="mt-2 break-all text-xs text-slate-500">Slug: {pack.slug}</p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-2 lg:flex lg:flex-wrap lg:justify-end">
                   <Link href={`/packs/${pack.slug}`} className="btn-ghost">View public page</Link>
-                  <form action={deleteMvpPack}>
+                  <form action={deleteMvpPack} className="w-full sm:w-auto">
                     <input type="hidden" name="id" value={pack.id} />
-                    <AdminSubmitButton className="btn-ghost text-red-100" pendingText="Deleting..." confirm="Delete this prompt pack?">
+                    <AdminSubmitButton className="btn-ghost w-full text-red-100" pendingText="Deleting..." confirm="Delete this prompt pack?">
                       <Trash2 className="h-4 w-4" /> Delete
                     </AdminSubmitButton>
                   </form>
                 </div>
               </div>
 
-              <details className="mt-5 rounded-3xl border border-white/10 bg-black/20 p-4">
+              <details className="mt-5 min-w-0 rounded-3xl border border-white/10 bg-black/20 p-4">
                 <summary className="cursor-pointer text-sm font-bold text-brand">Edit pack</summary>
                 <div className="mt-5">
                   <PackForm pack={pack} categories={categories} />
@@ -113,7 +113,7 @@ export default async function AdminPacksPage({ searchParams }: { searchParams: P
 
 function PackForm({ pack, categories }: { pack?: AdminPromptPack; categories: string[] }) {
   return (
-    <form action={upsertMvpPack} className="grid gap-4">
+    <form action={upsertMvpPack} className="grid min-w-0 gap-4">
       {pack ? <input type="hidden" name="id" value={pack.id} /> : null}
       <div className="grid gap-4 md:grid-cols-2">
         <label className="block space-y-2">
@@ -185,7 +185,7 @@ function PackForm({ pack, categories }: { pack?: AdminPromptPack; categories: st
       </div>
       <input type="hidden" name="total_prompts" value={pack?.total_prompts ?? ""} />
       <div>
-        <AdminSubmitButton className="btn-primary" pendingText="Saving...">{pack ? "Save pack" : "Create pack"}</AdminSubmitButton>
+        <AdminSubmitButton className="btn-primary w-full sm:w-auto" pendingText="Saving...">{pack ? "Save pack" : "Create pack"}</AdminSubmitButton>
       </div>
     </form>
   );
