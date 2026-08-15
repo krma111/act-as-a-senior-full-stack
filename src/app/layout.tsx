@@ -2,12 +2,48 @@
 import Link from "next/link";
 import { Toaster } from "sonner";
 import "./globals.css";
-import { getMvpSiteSettings } from "@/backend/mvp-data";
+import { getMvpSiteSettings, type MvpSiteSettings } from "@/backend/mvp-data";
 
 export const revalidate = 60;
 
+const fallbackSettings: MvpSiteSettings = {
+  id: 1,
+  admin_email: "cdubey159@gmail.com",
+  upi_id: "promptvault@upi",
+  qr_code_url: null,
+  homepage_title: "Copy-ready coding prompts for vibe coders.",
+  homepage_subtitle:
+    "Build apps, fix bugs, create dashboards, connect Supabase, improve UI, and deploy faster using powerful AI coding prompt packs.",
+  categories: [
+    "Full App Build Prompts",
+    "SaaS Startup Prompts",
+    "Bug Fix Prompts",
+    "Supabase Prompts",
+    "Admin Dashboard Prompts",
+    "UI/UX Upgrade Prompts",
+    "Vercel Deployment Prompts",
+    "Authentication Prompts",
+    "SEO Prompts",
+    "AI Agent Prompts",
+    "Landing Page Prompts",
+    "Database Schema Prompts"
+  ],
+  website_name: "PromptVault",
+  logo_text: "PromptVault",
+  footer_text: "Copyright 2026 PromptVault. All rights reserved."
+};
+
+async function loadSettings(): Promise<MvpSiteSettings> {
+  try {
+    return await getMvpSiteSettings();
+  } catch (error) {
+    console.error("[layout] Site settings load failed; using fallback", error);
+    return fallbackSettings;
+  }
+}
+
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getMvpSiteSettings();
+  const settings = await loadSettings();
   return {
     title: {
       default: settings.website_name,
@@ -23,7 +59,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const settings = await getMvpSiteSettings();
+  const settings = await loadSettings();
 
   return (
     <html lang="en">

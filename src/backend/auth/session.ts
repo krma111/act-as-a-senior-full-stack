@@ -1,4 +1,5 @@
 import type { User } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
 import { hasSupabaseEnv } from "@/backend/env";
 import { createClient } from "@/backend/database/server";
 import type { Profile } from "@/shared/types";
@@ -92,7 +93,7 @@ function normalizeProfile(user: User, row?: LooseProfileRow | null): Profile {
 async function readProfileFromTable(supabase: SupabaseServerClient, table: "profiles" | "users", userId: string) {
   const { data, error } = await withTimeout(
     supabase.from(table).select("*").eq("id", userId).maybeSingle(),
-    4000,
+    3000,
     `${table} profile lookup`
   );
   if (error) return null;
@@ -114,11 +115,17 @@ export async function getAuthSessionState(): Promise<AuthSessionState> {
     return { supabase: null, user: null, profile: null };
   }
 
+  const cookieStore = await cookies();
+  const hasSessionCookie = cookieStore.getAll().some((cookie) => cookie.name.startsWith("sb-"));
+  if (!hasSessionCookie) {
+    return { supabase: null, user: null, profile: null };
+  }
+
   const supabase = await createClient();
   let user: User | null = null;
 
   try {
-    const result = await withTimeout(supabase.auth.getUser(), 4000, "Supabase auth user lookup");
+    const result = await withTimeout(supabase.auth.getUser(), 3000, "Supabase auth user lookup");
     if (result.error) {
       return { supabase, user: null, profile: null };
     }

@@ -1,6 +1,6 @@
 ﻿import "server-only";
 
-import { unstable_noStore as noStore } from "next/cache";
+import { unstable_cache as cache, unstable_noStore as noStore } from "next/cache";
 import { hasSupabaseEnv, hasSupabaseServiceRoleKey } from "@/backend/env";
 import { createAdminClient } from "@/backend/database/admin";
 import { createPublicClient } from "@/backend/database/public";
@@ -152,99 +152,121 @@ function normalizeAdminPack(row: Record<string, unknown>): AdminPromptPack {
   };
 }
 
-export async function getMvpSiteSettings(): Promise<MvpSiteSettings> {
-  const supabase = getPublicDatabase();
-  if (!supabase) return defaultSettings;
+export const getMvpSiteSettings = cache(
+  async function loadMvpSiteSettings(): Promise<MvpSiteSettings> {
+    const supabase = getPublicDatabase();
+    if (!supabase) return defaultSettings;
 
-  try {
-    const { data, error } = await withTimeout(
-      supabase.from("site_settings").select("*").eq("id", 1).maybeSingle(),
-      4500,
-      "site settings query"
-    );
-    if (error || !data) return defaultSettings;
+    try {
+      const { data, error } = await withTimeout(
+        supabase.from("site_settings").select("*").eq("id", 1).maybeSingle(),
+        2500,
+        "site settings query"
+      );
+      if (error || !data) return defaultSettings;
 
-    return {
-      ...defaultSettings,
-      admin_email: data.admin_email ?? defaultSettings.admin_email,
-      upi_id: data.upi_id ?? defaultSettings.upi_id,
-      qr_code_url: data.qr_code_url ?? null,
-      homepage_title: data.homepage_title ?? data.hero_headline ?? defaultSettings.homepage_title,
-      homepage_subtitle: data.homepage_subtitle ?? data.hero_subheadline ?? defaultSettings.homepage_subtitle,
-      categories: cleanArray(data.categories, defaultSettings.categories),
-      website_name: data.website_name ?? defaultSettings.website_name,
-      logo_text: data.logo_text ?? defaultSettings.logo_text,
-      footer_text: data.footer_text ?? defaultSettings.footer_text
-    };
-  } catch (error) {
-    console.error("[mvp-data] Failed to load site settings", error);
-    return defaultSettings;
-  }
-}
+      return {
+        ...defaultSettings,
+        admin_email: data.admin_email ?? defaultSettings.admin_email,
+        upi_id: data.upi_id ?? defaultSettings.upi_id,
+        qr_code_url: data.qr_code_url ?? null,
+        homepage_title: data.homepage_title ?? data.hero_headline ?? defaultSettings.homepage_title,
+        homepage_subtitle: data.homepage_subtitle ?? data.hero_subheadline ?? defaultSettings.homepage_subtitle,
+        categories: cleanArray(data.categories, defaultSettings.categories),
+        website_name: data.website_name ?? defaultSettings.website_name,
+        logo_text: data.logo_text ?? defaultSettings.logo_text,
+        footer_text: data.footer_text ?? defaultSettings.footer_text
+      };
+    } catch (error) {
+      console.error("[mvp-data] Failed to load site settings", error);
+      return defaultSettings;
+    }
+  },
+  ["promptvault-mvp-settings"],
+  { revalidate: 120, tags: ["mvp-settings"] }
+);
+
+const loadAllPublicPromptPacks = cache(
+  async function loadAllPublicPromptPacks(): Promise<PublicPromptPack[]> {
+    const supabase = getPublicDatabase();
+    if (!supabase) return [] as PublicPromptPack[];
+
+    try {
+      const { data, error } = await withTimeout(
+        supabase
+          .from("prompt_packs")
+          .select("id,title,slug,description,category,price,is_free,is_paid,tools_supported,tech_stack,what_user_gets,preview_content,status,cover_image,total_prompts,created_at,updated_at")
+          .eq("status", "approved")
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: false })
+          .limit(100),
+        3000,
+        "public prompt packs query"
+      );
+      if (error) {
+        console.error("[mvp-data] Failed to load prompt packs", error);
+        return [] as PublicPromptPack[];
+      }
+
+      return ((data ?? []) as Record<string, unknown>[]).map((row) => normalizePack(row));
+    } catch (error) {
+      console.error("[mvp-data] Failed to load prompt packs", error);
+      return [] as PublicPromptPack[];
+    }
+  },
+  ["promptvault-mvp-public-packs"],
+  { revalidate: 60, tags: ["mvp-packs"] }
+);
 
 export async function getPublicPromptPacks(options?: { category?: string; search?: string; free?: "free" | "paid"; limit?: number }): Promise<PublicPromptPack[]> {
-  const supabase = getPublicDatabase();
-  if (!supabase) return [] as PublicPromptPack[];
+  const packs = await loadAllPublicPromptPacks();
+  const category = options?.category?.trim();
+  const search = options?.search?.trim().toLowerCase();
 
-  try {
-    let query = supabase
-      .from("prompt_packs")
-      .select("id,title,slug,description,category,price,is_free,is_paid,tools_supported,tech_stack,what_user_gets,preview_content,status,cover_image,total_prompts,created_at,updated_at")
-      .eq("status", "approved")
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: false });
-
-    if (options?.category) query = query.eq("category", options.category);
-    if (options?.free === "free") query = query.eq("is_free", true);
-    if (options?.free === "paid") query = query.eq("is_free", false);
-
-    const { data, error } = await withTimeout(query.limit(options?.limit ?? 100), 6000, "public prompt packs query");
-    if (error) {
-      console.error("[mvp-data] Failed to load prompt packs", error);
-      return [];
-    }
-
-    const search = options?.search?.trim().toLowerCase();
-    const rows = (data ?? []) as Record<string, unknown>[];
-    const packs = rows.map((row) => normalizePack(row));
-    if (!search) return packs;
-
-    return packs.filter((pack) =>
-      [pack.title, pack.description, pack.category, pack.tools_supported.join(" "), pack.tech_stack.join(" ")]
+  const filtered = packs.filter((pack) => {
+    if (category && pack.category !== category) return false;
+    if (options?.free === "free" && !pack.is_free) return false;
+    if (options?.free === "paid" && pack.is_free) return false;
+    if (search) {
+      const haystack = [pack.title, pack.description, pack.category, pack.tools_supported.join(" "), pack.tech_stack.join(" ")]
         .filter(Boolean)
         .join(" ")
-        .toLowerCase()
-        .includes(search)
-    );
-  } catch (error) {
-    console.error("[mvp-data] Failed to load prompt packs", error);
-    return [];
-  }
+        .toLowerCase();
+      if (!haystack.includes(search)) return false;
+    }
+    return true;
+  });
+
+  return options?.limit ? filtered.slice(0, options.limit) : filtered;
 }
 
-export async function getPublicPromptPack(slug: string): Promise<PublicPromptPack | null> {
-  const supabase = getPublicDatabase();
-  if (!supabase) return null;
+export const getPublicPromptPack = cache(
+  async function loadPublicPromptPack(slug: string): Promise<PublicPromptPack | null> {
+    const supabase = getPublicDatabase();
+    if (!supabase) return null;
 
-  try {
-    const { data, error } = await withTimeout(
-      supabase
-        .from("prompt_packs")
-        .select("id,title,slug,description,category,price,is_free,is_paid,tools_supported,tech_stack,what_user_gets,preview_content,status,cover_image,total_prompts,created_at,updated_at")
-        .eq("slug", slug)
-        .eq("status", "approved")
-        .maybeSingle(),
-      5000,
-      "public prompt pack detail query"
-    );
+    try {
+      const { data, error } = await withTimeout(
+        supabase
+          .from("prompt_packs")
+          .select("id,title,slug,description,category,price,is_free,is_paid,tools_supported,tech_stack,what_user_gets,preview_content,status,cover_image,total_prompts,created_at,updated_at")
+          .eq("slug", slug)
+          .eq("status", "approved")
+          .maybeSingle(),
+        2500,
+        "public prompt pack detail query"
+      );
 
-    if (error || !data) return null;
-    return normalizePack(data as Record<string, unknown>);
-  } catch (error) {
-    console.error("[mvp-data] Failed to load prompt pack", error);
-    return null;
-  }
-}
+      if (error || !data) return null;
+      return normalizePack(data as Record<string, unknown>);
+    } catch (error) {
+      console.error("[mvp-data] Failed to load prompt pack", error);
+      return null;
+    }
+  },
+  ["promptvault-mvp-public-pack"],
+  { revalidate: 60, tags: ["mvp-packs"] }
+);
 
 export async function getAdminPromptPacks(filter?: string): Promise<{ packs: AdminPromptPack[]; error: string | null }> {
   noStore();
@@ -260,7 +282,7 @@ export async function getAdminPromptPacks(filter?: string): Promise<{ packs: Adm
 
     if (filter && filter !== "all") query = query.eq("status", filter);
 
-    const { data, error } = await withTimeout(query, 7000, "admin prompt packs query");
+    const { data, error } = await withTimeout(query, 6000, "admin prompt packs query");
     if (error) return { packs: [] as AdminPromptPack[], error: error.message };
     const rows = (data ?? []) as Record<string, unknown>[];
     return { packs: rows.map((row) => normalizeAdminPack(row)), error: null };
@@ -284,7 +306,7 @@ export async function getAdminOrders(filter?: string): Promise<{ orders: MvpOrde
 
     if (filter && filter !== "all") query = query.eq("status", filter);
 
-    const { data, error } = await withTimeout(query, 7000, "admin orders query");
+    const { data, error } = await withTimeout(query, 6000, "admin orders query");
     if (error) return { orders: [] as MvpOrder[], error: error.message };
 
     const orderRowsRaw = (data ?? []) as Record<string, unknown>[];
@@ -305,7 +327,7 @@ export async function getAdminOrders(filter?: string): Promise<{ orders: MvpOrde
     if (packIds.length) {
       const { data: packs } = await withTimeout(
         supabase.from("prompt_packs").select("id,full_content").in("id", packIds),
-        5000,
+        4000,
         "admin order pack content query"
       );
       for (const pack of ((packs ?? []) as Record<string, unknown>[])) {
@@ -346,7 +368,7 @@ export async function getMvpAdminStats(): Promise<MvpAdminStats> {
         supabase.from("prompt_packs").select("id,is_free,price,status"),
         supabase.from("orders").select("id,status,price")
       ]),
-      7000,
+      5000,
       "admin stats queries"
     );
     const packRows = (packs.data ?? []) as Array<{ is_free?: boolean; price?: number | string; status?: string }>;
@@ -385,7 +407,7 @@ export async function getAdminFullPackContent(packId: string) {
   try {
     const { data, error } = await withTimeout(
       supabase.from("prompt_packs").select("full_content").eq("id", packId).maybeSingle(),
-      5000,
+      4000,
       "admin full pack content query"
     );
     if (error || !data) return null;

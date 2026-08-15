@@ -1,6 +1,6 @@
 ﻿"use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { hasSupabaseEnv, hasSupabaseServiceRoleKey } from "@/backend/env";
 import { sendPromptPackDeliveryEmail } from "@/backend/email/send";
@@ -82,7 +82,7 @@ export async function createOrderAction(input: CreateOrderInput) {
         .select("id,title,price,status,is_free")
         .eq("id", input.packId)
         .maybeSingle(),
-      5000,
+      4000,
       "checkout pack lookup"
     );
 
@@ -106,7 +106,7 @@ export async function createOrderAction(input: CreateOrderInput) {
         })
         .select("id")
         .single(),
-      6000,
+      5000,
       "checkout order insert"
     );
 
@@ -173,6 +173,7 @@ export async function upsertMvpPack(formData: FormData) {
 
   if (result.error) redirectWithMessage("/admin/packs", "error", result.error.message);
 
+  revalidateTag("mvp-packs");
   revalidatePath("/");
   revalidatePath("/packs");
   revalidatePath(`/packs/${slug}`);
@@ -190,6 +191,7 @@ export async function deleteMvpPack(formData: FormData) {
     .catch((error) => ({ error: { message: getErrorMessage(error, "Unable to delete prompt pack.") } }));
   if (error) redirectWithMessage("/admin/packs", "error", error.message);
 
+  revalidateTag("mvp-packs");
   revalidatePath("/");
   revalidatePath("/packs");
   revalidatePath("/admin");
@@ -288,6 +290,7 @@ export async function updateMvpSettings(formData: FormData) {
     .catch((error) => ({ error: { message: getErrorMessage(error, "Unable to update settings.") } }));
   if (error) redirectWithMessage("/admin/settings", "error", error.message);
 
+  revalidateTag("mvp-settings");
   revalidatePath("/");
   revalidatePath("/packs");
   revalidatePath("/admin");
