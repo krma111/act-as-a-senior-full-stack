@@ -12,6 +12,9 @@ export async function GET() {
 
   const client = createPublicClient();
   const start = Date.now();
+  if (!client) {
+    out.client = { tookMs: 0, error: { message: "createPublicClient returned null" } };
+  } else {
   try {
     const { data, error } = await client
       .from("prompt_packs")
@@ -26,6 +29,7 @@ export async function GET() {
     };
   } catch (e) {
     out.client = { tookMs: Date.now() - start, threw: String(e) };
+  }
   }
 
   const key = getSupabaseAnonKey();
