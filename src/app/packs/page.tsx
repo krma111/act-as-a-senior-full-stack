@@ -8,12 +8,14 @@ export const revalidate = 60;
 
 export default async function PacksPage({ searchParams }: { searchParams: Promise<{ category?: string; type?: string; q?: string }> }) {
   const params = await searchParams;
-  const settings = await getMvpSiteSettings();
-  const packs = await getPublicPromptPacks({
-    category: params.category,
-    free: params.type === "free" ? "free" : params.type === "paid" ? "paid" : undefined,
-    search: params.q
-  });
+  const [settings, packs] = await Promise.all([
+    getMvpSiteSettings(),
+    getPublicPromptPacks({
+      category: params.category,
+      free: params.type === "free" ? "free" : params.type === "paid" ? "paid" : undefined,
+      search: params.q
+    })
+  ]);
 
   return (
     <MotionMain className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">

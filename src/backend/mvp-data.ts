@@ -1,6 +1,6 @@
 ﻿import "server-only";
 
-import { unstable_cache as cache, unstable_noStore as noStore } from "next/cache";
+import { unstable_noStore as noStore } from "next/cache";
 import { hasSupabaseEnv, hasSupabaseServiceRoleKey } from "@/backend/env";
 import { createAdminClient } from "@/backend/database/admin";
 import { createPublicClient } from "@/backend/database/public";
@@ -105,6 +105,16 @@ type MvpSupabaseClient = {
   from: (table: string) => any;
 };
 
+const ttlCache = new Map<string, { expiresAt: number; value: unknown }>();
+
+async function withTtlCache<T>(key: string, ttlMs: number, loader: () => Promise<T>): Promise<T> {
+  const entry = ttlCache.get(key);
+  if (entry && entry.expiresAt > Date.now()) return entry.value as T;
+  const value = await loader();
+  ttlCache.set(key, { expiresAt: Date.now() + ttlMs, value });
+  return value;
+}
+
 function getPublicDatabase(): MvpSupabaseClient | null {
   if (!hasSupabaseEnv) return null;
   return createPublicClient() as unknown as MvpSupabaseClient;
@@ -152,15 +162,15 @@ function normalizeAdminPack(row: Record<string, unknown>): AdminPromptPack {
   };
 }
 
-export const getMvpSiteSettings = cache(
-  async function loadMvpSiteSettings(): Promise<MvpSiteSettings> {
+export async function getMvpSiteSettings(): Promise<MvpSiteSettings> {
+  return withTtlCache("mvp-settings", 120_000, async () => {
     const supabase = getPublicDatabase();
     if (!supabase) return defaultSettings;
 
     try {
       const { data, error } = await withTimeout(
         supabase.from("site_settings").select("*").eq("id", 1).maybeSingle(),
-        2500,
+        4000,
         "site settings query"
       );
       if (error || !data) return defaultSettings;
@@ -181,13 +191,11 @@ export const getMvpSiteSettings = cache(
       console.error("[mvp-data] Failed to load site settings", error);
       return defaultSettings;
     }
-  },
-  ["promptvault-mvp-settings"],
-  { revalidate: 120, tags: ["mvp-settings"] }
-);
+  });
+}
 
-const loadAllPublicPromptPacks = cache(
-  async function loadAllPublicPromptPacks(): Promise<PublicPromptPack[]> {
+async function loadAllPublicPromptPacks(): Promise<PublicPromptPack[]> {
+  return withTtlCache("mvp-public-packs", 60_000, async () => {
     const supabase = getPublicDatabase();
     if (!supabase) return [] as PublicPromptPack[];
 
@@ -200,7 +208,7 @@ const loadAllPublicPromptPacks = cache(
           .order("sort_order", { ascending: true })
           .order("created_at", { ascending: false })
           .limit(100),
-        3000,
+        4000,
         "public prompt packs query"
       );
       if (error) {
@@ -213,10 +221,8 @@ const loadAllPublicPromptPacks = cache(
       console.error("[mvp-data] Failed to load prompt packs", error);
       return [] as PublicPromptPack[];
     }
-  },
-  ["promptvault-mvp-public-packs"],
-  { revalidate: 60, tags: ["mvp-packs"] }
-);
+  });
+}
 
 export async function getPublicPromptPacks(options?: { category?: string; search?: string; free?: "free" | "paid"; limit?: number }): Promise<PublicPromptPack[]> {
   const packs = await loadAllPublicPromptPacks();
@@ -240,8 +246,8 @@ export async function getPublicPromptPacks(options?: { category?: string; search
   return options?.limit ? filtered.slice(0, options.limit) : filtered;
 }
 
-export const getPublicPromptPack = cache(
-  async function loadPublicPromptPack(slug: string): Promise<PublicPromptPack | null> {
+export async function getPublicPromptPack(slug: string): Promise<PublicPromptPack | null> {
+  return withTtlCache(`mvp-public-pack-${slug}`, 60_000, async () => {
     const supabase = getPublicDatabase();
     if (!supabase) return null;
 
@@ -253,7 +259,7 @@ export const getPublicPromptPack = cache(
           .eq("slug", slug)
           .eq("status", "approved")
           .maybeSingle(),
-        2500,
+        4000,
         "public prompt pack detail query"
       );
 
@@ -263,10 +269,8 @@ export const getPublicPromptPack = cache(
       console.error("[mvp-data] Failed to load prompt pack", error);
       return null;
     }
-  },
-  ["promptvault-mvp-public-pack"],
-  { revalidate: 60, tags: ["mvp-packs"] }
-);
+  });
+}
 
 export async function getAdminPromptPacks(filter?: string): Promise<{ packs: AdminPromptPack[]; error: string | null }> {
   noStore();
